@@ -1,41 +1,59 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+type OrderStatus = 'PENDING' | 'PAID' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'PAYMENT_FAILED';
+
+type OrderItem = {
+  id: string;
+  name: string;
+  size: string;
+  topping: string;
+  qty: number;
+  price: number;
+  image: string;
+};
+
+type OrderSummary = {
+  code: string;
+  status: OrderStatus;
+  time: string;
+  total: number;
+  refund?: number;
+  items: number;
+};
+
+type OrderDetail = OrderSummary & { itemsList: OrderItem[] };
+
+// Giả lập dữ liệu cho các trạng thái khác nhau
+const MOCK_DATA: Record<string, OrderSummary> = {
+  '1': { code: 'CC-000001', status: 'CANCELLED', time: '25/10/2026 - 09:36', total: 80000, refund: 80000, items: 2 },
+  '2': { code: 'CC-000002', status: 'PAYMENT_FAILED', time: '25/10/2026 - 09:36', total: 45000, items: 1 },
+  '3': { code: 'CC-000003', status: 'COMPLETED', time: '25/10/2026 - 09:36', total: 77000, items: 2 },
+  '4': { code: 'CC-000004', status: 'PREPARING', time: '25/10/2026 - 09:36', total: 119000, items: 4 },
+};
+
+const MOCK_ITEMS: OrderItem[] = [
+  { id: '1', name: 'Cà Phê Sữa', size: 'M', topping: 'Không topping', qty: 1, price: 28000, image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop' },
+  { id: '2', name: 'Cappuccino', size: 'M', topping: 'Không topping', qty: 1, price: 40000, image: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?q=80&w=200&auto=format&fit=crop' },
+  { id: '3', name: 'Americano', size: 'M', topping: 'Không topping', qty: 1, price: 32000, image: 'https://images.unsplash.com/photo-1551030173-122aabc4489c?q=80&w=200&auto=format&fit=crop' },
+  { id: '4', name: 'Caramel Macchiato', size: 'M', topping: 'Không topping', qty: 1, price: 40000, image: 'https://images.unsplash.com/photo-1485808191679-5f86510681a2?q=80&w=200&auto=format&fit=crop' },
+];
+
 export default function OrderDetailPage() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const [order, setOrder] = useState<any>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [viewMode, setViewMode] = useState<'DETAIL' | 'TRACKING'>('DETAIL');
 
-  // Giả lập dữ liệu cho các trạng thái khác nhau
-  useEffect(() => {
-    const MOCK_DATA: any = {
-      '1': { code: 'CC-000001', status: 'CANCELLED', time: '25/10/2026 - 09:36', total: 80000, refund: 80000, items: 2 },
-      '2': { code: 'CC-000002', status: 'PAYMENT_FAILED', time: '25/10/2026 - 09:36', total: 45000, items: 1 },
-      '3': { code: 'CC-000003', status: 'COMPLETED', time: '25/10/2026 - 09:36', total: 77000, items: 2 },
-      '4': { code: 'CC-000004', status: 'PREPARING', time: '25/10/2026 - 09:36', total: 119000, items: 4 },
-    };
-    const baseOrder = MOCK_DATA[id as string] || MOCK_DATA['4'];
-    
-    setOrder({
-      ...baseOrder,
-      itemsList: [
-        { id: '1', name: 'Cà Phê Sữa', size: 'M', topping: 'Không topping', qty: 1, price: 28000, image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop' },
-        { id: '2', name: 'Cappuccino', size: 'M', topping: 'Không topping', qty: 1, price: 40000, image: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?q=80&w=200&auto=format&fit=crop' },
-        { id: '3', name: 'Americano', size: 'M', topping: 'Không topping', qty: 1, price: 32000, image: 'https://images.unsplash.com/photo-1551030173-122aabc4489c?q=80&w=200&auto=format&fit=crop' },
-        { id: '4', name: 'Caramel Macchiato', size: 'M', topping: 'Không topping', qty: 1, price: 40000, image: 'https://images.unsplash.com/photo-1485808191679-5f86510681a2?q=80&w=200&auto=format&fit=crop' },
-      ]
-    });
-  }, [id]);
-
-  if (!order) return <div className="min-h-screen bg-[#F8F5EC] flex items-center justify-center text-[#333]">Đang tải...</div>;
+  const order = useMemo<OrderDetail>(
+    () => ({ ...(MOCK_DATA[id] ?? MOCK_DATA['4']), itemsList: MOCK_ITEMS }),
+    [id],
+  );
 
   const isCancelled = order.status === 'CANCELLED';
   const isPaymentFailed = order.status === 'PAYMENT_FAILED';
-  const isPreparing = order.status === 'PREPARING';
   const isCompleted = order.status === 'COMPLETED';
 
   const timelineSteps = [
@@ -84,7 +102,7 @@ export default function OrderDetailPage() {
           {viewMode === 'DETAIL' && (
             <>
               <div className="bg-white rounded-2xl shadow-sm border border-[#F0EAD6] overflow-hidden">
-                {order.itemsList.map((item: any) => (
+                {order.itemsList.map((item) => (
                   <div key={item.id} className="flex gap-3 p-4 border-b border-[#F5F0E1] last:border-0">
                     <img src={item.image} alt={item.name} className="w-[70px] h-[70px] rounded-xl object-cover" />
                     <div className="flex-1 flex justify-between">
@@ -121,7 +139,7 @@ export default function OrderDetailPage() {
                   <p className="text-[13px] text-[#888]">Đơn đã được hủy trước khi quán bắt đầu pha chế.</p>
                   
                   <div className="mt-6 border-t border-[#F5F0E1] pt-4 text-[13px] space-y-3 text-left">
-                    <div className="flex justify-between"><span className="text-[#888]">Hoàn tiền</span><span className="font-bold text-[#333]">{order.refund.toLocaleString()}đ · về Ví điện tử</span></div>
+                    <div className="flex justify-between"><span className="text-[#888]">Hoàn tiền</span><span className="font-bold text-[#333]">{(order.refund ?? 0).toLocaleString()}đ · về Ví điện tử</span></div>
                     <div className="flex justify-between"><span className="text-[#888]">Dự kiến</span><span className="font-bold text-[#333]">1–3 ngày làm việc</span></div>
                     <div className="flex justify-between"><span className="text-[#888]">Điểm thưởng</span><span className="font-bold text-[#D93025]">-11 điểm (đã thu hồi)</span></div>
                     <div className="flex justify-between"><span className="text-[#888]">Mã GIAM15%</span><span className="font-bold text-[#333]">Được hoàn lại lượt dùng</span></div>
