@@ -391,6 +391,39 @@ const designProducts: ProductSeed[] = designMenu.map((product) => ({
 }));
 
 async function main() {
+  const promotions = [
+    {
+      code: 'GIAM15',
+      description: 'Giảm 15% cho đơn từ 50.000đ',
+      discountType: 'PERCENT' as const,
+      value: 15,
+      minOrderValue: 50000,
+      maxDiscount: 30000,
+      startsAt: new Date('2026-01-01T00:00:00.000Z'),
+      endsAt: new Date('2026-12-31T23:59:59.999Z'),
+    },
+    {
+      code: 'GIAM20',
+      description: 'Giảm 20.000đ cho đơn từ 120.000đ',
+      discountType: 'FIXED_AMOUNT' as const,
+      value: 20000,
+      minOrderValue: 120000,
+      maxDiscount: null,
+      startsAt: new Date('2026-01-01T00:00:00.000Z'),
+      endsAt: new Date('2026-12-31T23:59:59.999Z'),
+    },
+    {
+      code: 'GIAM10K',
+      description: 'Giảm 10.000đ cho đơn từ 60.000đ',
+      discountType: 'FIXED_AMOUNT' as const,
+      value: 10000,
+      minOrderValue: 60000,
+      maxDiscount: null,
+      startsAt: new Date('2026-08-01T00:00:00.000Z'),
+      endsAt: new Date('2026-09-30T23:59:59.999Z'),
+    },
+  ];
+
   const categoryIds = new Map<string, number>();
   const toppingIds = new Map<string, number>();
 
@@ -468,8 +501,22 @@ async function main() {
     ]);
   }
 
+  for (const promotion of promotions) {
+    await prisma.promotion.upsert({
+      where: { code: promotion.code },
+      update: {
+        ...promotion,
+        isActive: true,
+      },
+      create: {
+        ...promotion,
+        isActive: true,
+      },
+    });
+  }
+
   console.info(
-    `Seeded ${categories.length} categories, ${toppings.length} toppings and ${designProducts.length} products.`,
+    `Seeded ${categories.length} categories, ${toppings.length} toppings, ${designProducts.length} products and ${promotions.length} promotions.`,
   );
 }
 
