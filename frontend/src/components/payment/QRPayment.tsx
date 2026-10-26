@@ -15,11 +15,10 @@ export default function QRPayment({
   onCancel,
 }: QRPaymentProps) {
   const [timeLeft, setTimeLeft] = useState(15 * 60); // Đếm ngược 15 phút[cite: 1]
-  const [isExpired, setIsExpired] = useState(false);
+  const isExpired = timeLeft <= 0;
 
   useEffect(() => {
-    if (timeLeft <= 0) {
-      setIsExpired(true);
+    if (isExpired) {
       return;
     }
     const timer = setInterval(() => {
@@ -27,11 +26,10 @@ export default function QRPayment({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft]);
+  }, [timeLeft, isExpired]);
 
   const handleCreateNewQR = () => {
     setTimeLeft(15 * 60); // Reset lại 15 phút[cite: 1]
-    setIsExpired(false);
   };
 
   // Format thời gian thành MM:SS
