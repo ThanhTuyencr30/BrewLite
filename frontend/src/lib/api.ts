@@ -1,4 +1,11 @@
-import type { Category, Product } from "./api.types";
+import type {
+  CartValidationResult,
+  CartValidationInputItem,
+  Category,
+  Product,
+  Promotion,
+  PromotionValidation,
+} from "./api.types";
 
 const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"
@@ -37,4 +44,52 @@ export function getProducts(
 
   const query = searchParams.toString();
   return fetchJson<Product[]>(`/products${query ? `?${query}` : ""}`, signal);
+}
+
+async function postJson<T>(
+  path: string,
+  body: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    signal,
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const responseBody: unknown = await response.json().catch(() => null);
+    let message = `API request failed with status ${response.status}`;
+    if (responseBody && typeof responseBody === "object" && "message" in responseBody) {
+      if (typeof responseBody.message === "string") {
+        message = responseBody.message;
+      } else if (Array.isArray(responseBody.message)) {
+        const details = responseBody.message.filter(
+          (part): part is string => typeof part === "string",
+        );
+        if (details.length > 0) {
+          message = details.join(" ");
+        }
+      }
+    }
+    throw new Error(message);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+export function getPromotions(signal: AbortSignal) {
+  return fetchJson<Promotion[]>("/promotions/me", signal);
+}
+
+export function validatePromotion(code: string, items: CartValidationInputItem[]) {
+  return postJson<PromotionValidation>("/promotions/validate", { code, items });
+}
+
+export function validateCart(items: CartValidationInputItem[]) {
+  return postJson<CartValidationResult>("/cart/validate", { items });
 }
