@@ -73,7 +73,7 @@ a {
   align-items: center;
   display: inline-flex;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   gap: 10px;
   letter-spacing: -0.04em;
@@ -151,6 +151,13 @@ a {
   min-height: 38px;
   padding: 0 15px;
   transition: background 160ms ease, transform 160ms ease;
+}
+
+.header-account-link__label {
+  max-width: 116px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .header-account-link:hover {
@@ -245,6 +252,10 @@ a {
   position: relative;
   transform: rotate(2deg);
   width: 100%;
+}
+
+.hero__visual img {
+  object-fit: cover;
 }
 
 .hero__visual::before,
@@ -588,6 +599,10 @@ a {
   font-size: 16px;
 }
 
+.product-card--sold-out .product-card__footer strong {
+  color: var(--muted);
+}
+
 .size-list {
   display: flex;
   gap: 4px;
@@ -807,7 +822,8 @@ footer p {
 @media (max-width: 780px) {
   .site-header {
     grid-template-columns: 1fr auto;
-    padding: 18px 22px;
+    gap: 12px;
+    padding: 15px 18px;
   }
 
   .site-header nav {
@@ -824,7 +840,8 @@ footer p {
 
   .hero {
     grid-template-columns: 1fr;
-    padding: 55px 22px 75px;
+    gap: 28px;
+    padding: 36px 20px 52px;
   }
 
   .hero__content {
@@ -839,13 +856,13 @@ footer p {
 
   .menu-section {
     border-radius: 32px 32px 0 0;
-    padding: 65px 22px 80px;
+    padding: 48px 20px 70px;
   }
 
   .menu-heading {
     align-items: stretch;
     flex-direction: column;
-    gap: 25px;
+    gap: 20px;
   }
 
   .search-box {
@@ -895,22 +912,196 @@ footer p {
     width: 94px;
   }
 
-  .product-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .product-card__image-wrap {
-    aspect-ratio: 1.5;
-  }
-
-  .product-card__body {
-    min-height: 175px;
-  }
-
   .about-strip strong {
     font-size: 19px;
   }
+}
 
+@media (max-width: 420px) {
+    .site-header {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+
+    .brand {
+      font-size: 16px;
+      gap: 8px;
+      letter-spacing: 0;
+    }
+
+    .brand__mark {
+      height: 34px;
+      width: 34px;
+    }
+
+    .header-account-link {
+      font-size: 11px;
+      gap: 6px;
+      min-height: 36px;
+      padding: 0 12px;
+    }
+
+    .hero {
+      gap: 22px;
+      padding: 33px 18px 43px;
+    }
+
+    .hero h1 {
+      font-size: clamp(39px, 10vw, 46px);
+    }
+
+    .hero__description {
+      font-size: 15px;
+      margin: 20px 0;
+    }
+
+    .hero__visual {
+      max-width: 280px;
+    }
+
+    .hero__cup {
+      bottom: 22%;
+      height: 105px;
+      left: 23%;
+      width: 142px;
+    }
+
+    .hero__coffee {
+      height: 42px;
+      top: -15px;
+    }
+
+    .hero__handle {
+      border-width: 17px;
+      border-left: 0;
+      height: 70px;
+      right: -49px;
+      top: 22px;
+      width: 57px;
+    }
+
+    .hero__steam {
+      height: 40px;
+      top: -65px;
+    }
+
+    .hero__steam--one {
+      left: 44px;
+    }
+
+    .hero__steam--two {
+      left: 88px;
+    }
+
+    .hero__sun {
+      height: 46px;
+      width: 46px;
+    }
+
+    .hero__badge {
+      bottom: 4%;
+      height: 82px;
+      right: -1%;
+      width: 82px;
+    }
+
+    .hero__badge strong {
+      font-size: 22px;
+    }
+
+    .hero__badge span {
+      font-size: 9px;
+    }
+
+    .menu-section {
+      border-radius: 27px 27px 0 0;
+      padding: 39px 16px 58px;
+    }
+
+    .menu-heading h2 {
+      font-size: 34px;
+    }
+
+    .category-list {
+      gap: 8px;
+      margin: 25px 0 23px;
+    }
+
+    .category-list button {
+      font-size: 12px;
+      min-height: 38px;
+      padding: 0 13px;
+    }
+
+    .product-grid {
+      gap: 12px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .product-card {
+      border-radius: 17px;
+    }
+
+    .product-card__image-wrap {
+      aspect-ratio: 0.96;
+    }
+
+    .product-card__category,
+    .product-card__stock {
+      font-size: 8px;
+      padding: 5px 7px;
+      top: 8px;
+    }
+
+    .product-card__category {
+      left: 8px;
+    }
+
+    .product-card__stock {
+      right: 8px;
+    }
+
+    .product-card__body {
+      gap: 14px;
+      min-height: 139px;
+      padding: 12px;
+    }
+
+    .product-card h3 {
+      font-size: 16px;
+      margin-bottom: 5px;
+    }
+
+    .product-card p {
+      font-size: 11px;
+      line-height: 1.45;
+      min-height: 32px;
+    }
+
+    .price-label {
+      font-size: 9px;
+    }
+
+    .product-card__footer strong {
+      font-size: 13px;
+    }
+
+    .size-list {
+      gap: 3px;
+    }
+
+    .size-list span {
+      font-size: 8px;
+      height: 21px;
+      width: 21px;
+    }
+
+    .result-count {
+      font-size: 11px;
+    }
+}
+
+@media (max-width: 540px) {
   footer {
     align-items: flex-start;
     flex-direction: column;
