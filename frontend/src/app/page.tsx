@@ -1,5 +1,5 @@
-import { BrewLiteShowcase } from "@/components/showcase";
+import { MenuPage } from "@/components/menu/menu-page";
 
-export default function HomePage() {
-  return <BrewLiteShowcase />;
+export default function Home() {
+  return <MenuPage />;
 }

@@ -14,7 +14,7 @@ xung đột.
 
 ## 2. Cài đặt và chạy local
 
-Yêu cầu: Node.js 20 trở lên và npm.
+Yêu cầu: Node.js 24 và npm.
 
 ```bash
 # Frontend - mặc định http://localhost:3000
@@ -48,7 +48,30 @@ Sao chép `.env.example` thành `.env` khi cần cấu hình local. Không commi
   task không yêu cầu. Nếu bắt buộc thay đổi, cập nhật tài liệu và nói rõ trong PR.
 - Lưu file bằng UTF-8 để nội dung tiếng Việt không bị lỗi font/encoding.
 
-## 4. Frontend
+## 4. Quy ước đặt tên file
+
+- Tên file và thư mục tự tạo dùng tiếng Anh, chữ thường và `kebab-case`, ví dụ
+  `product-card.tsx`, `order-history/`, `format-currency.ts`.
+- Không dùng khoảng trắng, tiếng Việt có dấu hoặc tên chung chung như
+  `utils2.ts`, `new-file.ts`, `test-final.ts`.
+- React component dùng tên file `kebab-case`; tên component export bên trong
+  dùng `PascalCase`, ví dụ `product-card.tsx` export `ProductCard`.
+- Custom hook bắt đầu bằng `use-`, ví dụ `use-cart.ts`; context dùng hậu tố
+  `.context.tsx`; provider dùng hậu tố `.provider.tsx`.
+- File TypeScript dùng hậu tố thể hiện đúng vai trò khi phù hợp:
+  `.service.ts`, `.controller.ts`, `.module.ts`, `.dto.ts`, `.entity.ts`,
+  `.repository.ts`, `.guard.ts`, `.middleware.ts`, `.pipe.ts`.
+- File test đặt cạnh code với hậu tố `.spec.ts`/`.spec.tsx`; e2e test dùng
+  `.e2e-spec.ts` trong thư mục `test/`.
+- Với Next.js App Router, giữ nguyên tên file đặc biệt theo framework:
+  `page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx`,
+  `route.ts`.
+- File chỉ chứa type dùng hậu tố `.types.ts`; file hằng số dùng
+  `.constants.ts`. Không tạo file gom chung nếu nội dung chỉ thuộc một feature.
+- Tên file phải mô tả đúng nội dung chính; khi đổi tên symbol chính, đổi tên
+  file tương ứng để tránh lệch nghĩa.
+
+## 5. Frontend
 
 - Dùng App Router và tuân theo cấu trúc của Next.js 16. Trước khi dùng API
   Next.js chưa chắc chắn, đọc tài liệu local theo hướng dẫn trong
@@ -64,7 +87,7 @@ Sao chép `.env.example` thành `.env` khi cần cấu hình local. Không commi
   dụng bằng bàn phím. Ảnh phải có `alt` phù hợp.
 - Không hard-code URL backend; dùng `NEXT_PUBLIC_API_URL`.
 
-## 5. Backend
+## 6. Backend
 
 - Mỗi domain NestJS đặt trong module riêng, ví dụ:
   `src/products/products.module.ts`, `products.controller.ts`,
@@ -78,7 +101,7 @@ Sao chép `.env.example` thành `.env` khi cần cấu hình local. Không commi
   môi trường và cập nhật file `.env.example` khi thêm biến mới.
 - Viết unit test cho service/logic mới và e2e test cho endpoint quan trọng.
 
-## 6. API contract
+## 7. API contract
 
 - Endpoint dùng danh từ số nhiều, chữ thường, ví dụ `/products`.
 - Query parameter và JSON field dùng `camelCase`.
@@ -87,7 +110,7 @@ Sao chép `.env.example` thành `.env` khi cần cấu hình local. Không commi
 - Giá tiền được biểu diễn bằng số nguyên theo VND, không dùng số thực.
 - Ngày giờ trao đổi qua API dùng ISO 8601; backend lưu/xử lý theo UTC.
 
-## 7. Kiểm tra trước khi commit
+## 8. Kiểm tra trước khi commit
 
 Chạy các lệnh liên quan đến phần đã thay đổi:
 
@@ -107,7 +130,7 @@ npm run build
 Nếu một lệnh không chạy được, ghi rõ lệnh, lỗi và lý do trong PR; không bỏ qua
 im lặng.
 
-## 8. Git workflow
+## 9. Git workflow
 
 - Tạo branch mới từ `main` đã cập nhật. Không code trực tiếp trên `main`.
 - Tên branch theo mẫu:
@@ -121,7 +144,7 @@ im lặng.
   liệu cá nhân.
 - Không force-push branch của người khác và không ghi đè thay đổi chưa commit.
 
-## 9. Checklist cho Pull Request
+## 10. Checklist cho Pull Request
 
 - [ ] Code đúng phạm vi task và không kèm thay đổi ngoài lề.
 - [ ] Đã tự review diff và xóa code/debug file tạm.

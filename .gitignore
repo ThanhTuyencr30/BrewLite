@@ -5,6 +5,7 @@
 **/.next/
 **/dist/
 **/coverage/
+backend/src/generated/prisma/
 
 # Local environment files
 .env

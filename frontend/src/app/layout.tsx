@@ -3,15 +3,11 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BrewLite | Cà phê của bạn",
-  description: "Đặt món cà phê yêu thích cùng BrewLite.",
+  title: "BrewLite — Cà phê cho ngày nhẹ tênh",
+  description: "Chọn món yêu thích và đặt cà phê nhanh chóng cùng BrewLite.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="vi">
       <body>{children}</body>

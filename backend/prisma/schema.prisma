@@ -1,0 +1,257 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SizeCode {
+  S
+  M
+  L
+}
+
+enum IceLevel {
+  NONE
+  LESS
+  NORMAL
+  EXTRA
+}
+
+enum DiscountType {
+  PERCENT
+  FIXED_AMOUNT
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PREPARING
+  READY
+  COMPLETED
+  PAYMENT_FAILED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  WALLET
+  CARD
+  QR
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  slug      String    @unique
+  sortOrder Int       @default(0)
+  isActive  Boolean   @default(true)
+  products  Product[]
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@index([isActive, sortOrder])
+  @@map("categories")
+}
+
+model Product {
+  id           Int              @id @default(autoincrement())
+  categoryId   Int
+  category     Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  name         String
+  slug         String           @unique
+  description  String?
+  basePrice    Int
+  imageUrl     String
+  stock        Int              @default(0)
+  version      Int              @default(0)
+  isAvailable  Boolean          @default(true)
+  sizes        ProductSize[]
+  toppingLinks ProductTopping[]
+  orderItems   OrderItem[]
+  createdAt    DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime         @updatedAt @db.Timestamptz(3)
+
+  @@index([categoryId, isAvailable])
+  @@index([name])
+  @@map("products")
+}
+
+model ProductSize {
+  id              Int      @id @default(autoincrement())
+  productId       Int
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size            SizeCode
+  additionalPrice Int      @default(0)
+
+  @@unique([productId, size])
+  @@map("product_sizes")
+}
+
+model Topping {
+  id                Int                @id @default(autoincrement())
+  name              String             @unique
+  slug              String             @unique
+  price             Int
+  stock             Int                @default(0)
+  version           Int                @default(0)
+  isAvailable       Boolean            @default(true)
+  productLinks      ProductTopping[]
+  orderItemToppings OrderItemTopping[]
+  createdAt         DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime           @updatedAt @db.Timestamptz(3)
+
+  @@map("toppings")
+}
+
+model ProductTopping {
+  productId Int
+  toppingId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  topping   Topping @relation(fields: [toppingId], references: [id], onDelete: Cascade)
+
+  @@id([productId, toppingId])
+  @@map("product_toppings")
+}
+
+model User {
+  id             String          @id @default(uuid()) @db.Uuid
+  email          String          @unique
+  passwordHash   String
+  fullName       String?
+  phone          String?         @unique
+  loyaltyPoints  Int             @default(0)
+  orders         Order[]
+  userPromotions UserPromotion[]
+  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime        @updatedAt @db.Timestamptz(3)
+
+  @@map("users")
+}
+
+model Promotion {
+  id             Int             @id @default(autoincrement())
+  code           String          @unique
+  description    String?
+  discountType   DiscountType
+  value          Int
+  minOrderValue  Int             @default(0)
+  maxDiscount    Int?
+  startsAt       DateTime        @db.Timestamptz(3)
+  endsAt         DateTime        @db.Timestamptz(3)
+  usageLimit     Int?
+  usedCount      Int             @default(0)
+  isActive       Boolean         @default(true)
+  orders         Order[]
+  userPromotions UserPromotion[]
+  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime        @updatedAt @db.Timestamptz(3)
+
+  @@index([isActive, startsAt, endsAt])
+  @@map("promotions")
+}
+
+model UserPromotion {
+  userId      String    @db.Uuid
+  promotionId Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  claimedAt   DateTime  @default(now()) @db.Timestamptz(3)
+  usedAt      DateTime? @db.Timestamptz(3)
+
+  @@id([userId, promotionId])
+  @@map("user_promotions")
+}
+
+model Order {
+  id            String               @id @default(uuid()) @db.Uuid
+  code          String               @unique
+  userId        String               @db.Uuid
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+  promotionId   Int?
+  promotion     Promotion?           @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+  status        OrderStatus          @default(PENDING)
+  subtotal      Int
+  discount      Int                  @default(0)
+  total         Int
+  version       Int                  @default(0)
+  expiresAt     DateTime?            @db.Timestamptz(3)
+  items         OrderItem[]
+  payments      Payment[]
+  statusHistory OrderStatusHistory[]
+  createdAt     DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime             @updatedAt @db.Timestamptz(3)
+
+  @@index([userId, createdAt])
+  @@index([status, expiresAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id          Int                @id @default(autoincrement())
+  orderId     String             @db.Uuid
+  order       Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   Int
+  product     Product            @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productName String
+  size        SizeCode
+  iceLevel    IceLevel           @default(NORMAL)
+  quantity    Int
+  unitPrice   Int
+  lineTotal   Int
+  toppings    OrderItemTopping[]
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model OrderItemTopping {
+  orderItemId Int
+  toppingId   Int
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  topping     Topping   @relation(fields: [toppingId], references: [id], onDelete: Restrict)
+  toppingName String
+  unitPrice   Int
+
+  @@id([orderItemId, toppingId])
+  @@map("order_item_toppings")
+}
+
+model Payment {
+  id                    String        @id @default(uuid()) @db.Uuid
+  orderId               String        @db.Uuid
+  order                 Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  idempotencyKey        String        @unique
+  method                PaymentMethod
+  status                PaymentStatus @default(PENDING)
+  amount                Int
+  providerTransactionId String?       @unique
+  failureReason         String?
+  createdAt             DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime      @updatedAt @db.Timestamptz(3)
+
+  @@index([orderId, createdAt])
+  @@map("payments")
+}
+
+model OrderStatusHistory {
+  id         Int          @id @default(autoincrement())
+  orderId    String       @db.Uuid
+  order      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStatus OrderStatus?
+  toStatus   OrderStatus
+  note       String?
+  changedAt  DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@index([orderId, changedAt])
+  @@map("order_status_history")
+}
