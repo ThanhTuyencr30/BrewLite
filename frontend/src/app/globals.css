@@ -131,9 +131,31 @@ a {
 }
 
 .header-note {
+  align-items: center;
   color: var(--muted);
+  display: flex;
   font-size: 13px;
+  gap: 15px;
   justify-self: end;
+}
+
+.header-account-link {
+  align-items: center;
+  background: var(--forest);
+  border-radius: 999px;
+  color: white;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 15px;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.header-account-link:hover {
+  background: var(--forest-dark);
+  transform: translateY(-1px);
 }
 
 .hero {
@@ -788,8 +810,15 @@ footer p {
     padding: 18px 22px;
   }
 
-  .site-header nav,
+  .site-header nav {
+    display: none;
+  }
+
   .header-note {
+    justify-self: end;
+  }
+
+  .header-note__hours {
     display: none;
   }
 
