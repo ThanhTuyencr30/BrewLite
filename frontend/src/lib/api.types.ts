@@ -1,3 +1,4 @@
+// --- PHẦN DỮ LIỆU SẢN PHẨM (Của bạn) ---
 export interface Category {
   id: number;
   name: string;
@@ -16,7 +17,7 @@ export interface Product {
   slug: string;
   description: string | null;
   basePrice: number;
-  price: number;
+  price: number; // Tổng giá cuối cùng hoặc giá mặc định
   imageUrl: string;
   stock: number;
   isOutOfStock: boolean;
@@ -72,4 +73,34 @@ export interface CartValidationResult {
     requestedQuantity: number;
     availableStock: number;
   }[];
+}
+
+// --- PHẦN DỮ LIỆU THANH TOÁN (Bổ sung cho Task 8 & 10) ---
+
+// Các phương thức thanh toán hỗ trợ
+export type PaymentMethod = "E_WALLET" | "CARD" | "QR";
+
+// Quản lý trạng thái luồng UI thay cho Router
+export type ScreenState =
+  | "SELECT_METHOD"
+  | "CARD_FORM"
+  | "QR_CODE"
+  | "PROCESSING"
+  | "FAILED"
+  | "ORDER_SUCCESS";
+
+// Payload gửi lên API POST /payments. Thông tin thẻ không được gửi lên backend.
+export interface PaymentRequest {
+  orderId: string;
+  method: PaymentMethod;
+}
+
+// Bản ghi thanh toán backend trả về
+export interface PaymentResponse {
+  id: string;
+  orderId: string;
+  method: "WALLET" | "CARD" | "QR";
+  status: "PENDING" | "SUCCEEDED" | "FAILED" | "REFUNDED";
+  amount: number;
+  failureReason: string | null;
 }

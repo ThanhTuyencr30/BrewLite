@@ -2,12 +2,14 @@ import type {
   CartValidationResult,
   CartValidationInputItem,
   Category,
+  PaymentRequest,
+  PaymentResponse,
   Product,
   Promotion,
   PromotionValidation,
 } from "./api.types";
 
-export const API_BASE_URL = (
+const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"
 ).replace(/\/$/, "");
 
@@ -30,7 +32,7 @@ export function getCategories(signal: AbortSignal) {
 
 export function getProducts(
   filters: { search: string; category: string },
-  signal: AbortSignal,
+  signal: AbortSignal
 ) {
   const searchParams = new URLSearchParams();
 
@@ -92,4 +94,19 @@ export function validatePromotion(code: string, items: CartValidationInputItem[]
 
 export function validateCart(items: CartValidationInputItem[]) {
   return postJson<CartValidationResult>("/cart/validate", { items });
+}
+
+export function submitPayment(
+  payload: PaymentRequest,
+  signal?: AbortSignal
+): Promise<PaymentResponse> {
+  return postJson<PaymentResponse>(
+    "/payments",
+    {
+      orderId: payload.orderId,
+      method: payload.method === "E_WALLET" ? "WALLET" : payload.method,
+      idempotencyKey: crypto.randomUUID(),
+    },
+    signal,
+  );
 }

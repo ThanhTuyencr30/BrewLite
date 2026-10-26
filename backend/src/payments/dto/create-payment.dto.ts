@@ -1,19 +1,14 @@
-import { IsEnum, IsInt, IsNotEmpty, IsString, Min } from 'class-validator';
-import { PaymentMethod } from '../../generated/prisma/enums';
+import { IsIn, IsNotEmpty, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class CreatePaymentDto {
-  @IsString()
-  @IsNotEmpty()
+  @IsUUID()
   orderId: string;
 
   @IsString()
   @IsNotEmpty()
+  @MaxLength(128)
   idempotencyKey: string;
 
-  @IsEnum(PaymentMethod)
-  method: PaymentMethod;
-
-  @IsInt()
-  @Min(1)
-  amount: number;
+  @IsIn(['WALLET', 'CARD', 'QR'])
+  method: 'WALLET' | 'CARD' | 'QR';
 }
