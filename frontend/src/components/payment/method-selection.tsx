@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import { useState } from "react";
 import { PaymentMethod } from "@/lib/api.types";
 
 interface MethodSelectionProps {
@@ -16,7 +16,7 @@ export default function MethodSelection({ onSelect }: MethodSelectionProps) {
       </p>
 
       <div className="flex flex-col gap-3 mb-6">
-        {/* Ví điện tử[cite: 3] */}
+        {/* Ví điện tử */}
         <button
           onClick={() => setSelected("E_WALLET")}
           className={`flex items-center justify-between p-4 bg-white rounded-xl border-2 transition-all ${
@@ -43,7 +43,7 @@ export default function MethodSelection({ onSelect }: MethodSelectionProps) {
           </div>
         </button>
 
-        {/* Thẻ ngân hàng[cite: 3] */}
+        {/* Thẻ ngân hàng */}
         <button
           onClick={() => setSelected("CARD")}
           className={`flex items-center justify-between p-4 bg-white rounded-xl border-2 transition-all ${
@@ -72,7 +72,7 @@ export default function MethodSelection({ onSelect }: MethodSelectionProps) {
           </div>
         </button>
 
-        {/* Chuyển khoản QR[cite: 3] */}
+        {/* Chuyển khoản QR */}
         <button
           onClick={() => setSelected("QR")}
           className={`flex items-center justify-between p-4 bg-white rounded-xl border-2 transition-all ${
@@ -104,7 +104,7 @@ export default function MethodSelection({ onSelect }: MethodSelectionProps) {
         </button>
       </div>
 
-      {/* Ghi chú bảo mật[cite: 3] */}
+      {/* Ghi chú bảo mật */}
       <div className="flex items-center gap-2 mb-8 text-gray-500">
         <span className="flex items-center justify-center w-5 h-5 rounded-full border border-gray-400 text-xs">
           🛡
@@ -114,7 +114,7 @@ export default function MethodSelection({ onSelect }: MethodSelectionProps) {
         </p>
       </div>
 
-      {/* Nút xác nhận[cite: 3] */}
+      {/* Nút xác nhận */}
       <div className="mt-auto pt-4">
         <button
           disabled={!selected}

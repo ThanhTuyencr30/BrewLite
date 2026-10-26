@@ -1,5 +1,4 @@
 "use client";
-import React from "react";
 
 interface ProcessingStateProps {
   amount: number;
@@ -12,7 +11,7 @@ export default function ProcessingState({
 }: ProcessingStateProps) {
   return (
     <div className="flex flex-col h-full">
-      {/* Header[cite: 8] */}
+      {/* Header */}
       <div className="flex items-center mb-6">
         <button className="mr-4 text-xl font-bold opacity-50 cursor-not-allowed">
           ←
@@ -28,13 +27,13 @@ export default function ProcessingState({
         <p className="text-xs text-gray-400">Mã đơn hàng: {orderId}</p>
       </div>
 
-      {/* Box trạng thái[cite: 8] */}
+      {/* Box trạng thái */}
       <div className="bg-white rounded-xl p-8 mb-4 shadow-sm border border-gray-100 text-center flex flex-col items-center">
         <h3 className="font-bold text-[#4a3b32] text-lg mb-6">
           Đang xử lý thanh toán
         </h3>
         <div className="w-24 h-24 bg-[#fcf8e3] rounded-full flex items-center justify-center mb-6">
-          {/* Biểu tượng đồng hồ[cite: 8] */}
+          {/* Biểu tượng đồng hồ */}
           <span className="text-5xl text-[#c08d60]">🕒</span>
         </div>
         <p className="text-sm text-gray-500">
@@ -42,7 +41,7 @@ export default function ProcessingState({
         </p>
       </div>
 
-      {/* Thông tin thêm[cite: 8] */}
+      {/* Thông tin thêm */}
       <div className="bg-white rounded-xl p-4 mb-4 shadow-sm border border-gray-100 flex items-center gap-3">
         <div className="w-10 h-10 bg-[#fcf8e3] rounded-lg flex items-center justify-center text-xl">
           🕒

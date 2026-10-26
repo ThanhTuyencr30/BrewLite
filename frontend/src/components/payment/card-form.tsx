@@ -1,11 +1,11 @@
 "use client";
-import React, { useState } from "react";
+import { useState, type FormEvent } from "react";
 
 interface CardFormProps {
   amount: number;
   orderId: string;
   onBack: () => void;
-  onSubmit: (cardNumber: string) => void;
+  onSubmit: () => void;
 }
 
 export default function CardForm({
@@ -25,14 +25,14 @@ export default function CardForm({
     cvv: false,
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
     // Xóa khoảng trắng để kiểm tra regex
     const cleanCardNumber = cardNumber.replace(/\s/g, "");
 
-    const isCardValid = /^\d{16}$/.test(cleanCardNumber); // Yêu cầu 16 chữ số[cite: 1, 2]
-    const isCvvValid = /^\d{3}$/.test(cvv); // Yêu cầu 3 chữ số[cite: 2]
+    const isCardValid = /^\d{16}$/.test(cleanCardNumber); // Yêu cầu 16 chữ số
+    const isCvvValid = /^\d{3}$/.test(cvv); // Yêu cầu 3 chữ số
     const isExpiryValid = expiry.trim().length >= 5; // Giả lập check ngày hết hạn
 
     setErrors({
@@ -42,13 +42,13 @@ export default function CardForm({
     });
 
     if (isCardValid && isCvvValid && isExpiryValid) {
-      onSubmit(cleanCardNumber);
+      onSubmit();
     }
   };
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header[cite: 4] */}
+      {/* Header */}
       <div className="flex items-center mb-6">
         <button onClick={onBack} className="mr-4 text-xl font-bold">
           ←
@@ -56,7 +56,7 @@ export default function CardForm({
         <h2 className="text-lg font-bold text-[#4a3b32]">Thẻ ngân hàng</h2>
       </div>
 
-      {/* Box Tổng thanh toán[cite: 4] */}
+      {/* Box Tổng thanh toán */}
       <div className="bg-white rounded-xl p-4 text-center mb-6 shadow-sm border border-gray-100">
         <p className="text-sm text-gray-500">Tổng thanh toán</p>
         <h3 className="text-2xl font-bold text-[#4a3b32] my-1">
@@ -65,7 +65,7 @@ export default function CardForm({
         <p className="text-xs text-gray-400">Mã đơn hàng: {orderId}</p>
       </div>
 
-      {/* Form nhập liệu[cite: 2, 4] */}
+      {/* Form nhập liệu */}
       <form
         onSubmit={handleSubmit}
         className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex-1"
@@ -148,7 +148,7 @@ export default function CardForm({
           Cổng thanh toán giả lập (mock), không trừ tiền thật
         </p>
 
-        {/* Nút Submit cố định dưới cùng[cite: 4] */}
+        {/* Nút Submit cố định dưới cùng */}
         <div className="mt-8">
           <button
             type="submit"

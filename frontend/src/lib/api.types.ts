@@ -89,20 +89,18 @@ export type ScreenState =
   | "FAILED"
   | "ORDER_SUCCESS";
 
-// Payload gửi lên API POST /payments
+// Payload gửi lên API POST /payments. Thông tin thẻ không được gửi lên backend.
 export interface PaymentRequest {
+  orderId: string;
   method: PaymentMethod;
-  amount: number;
-  // Dành riêng cho thẻ
-  cardNumber?: string;
-  cardHolder?: string;
-  expiryDate?: string;
-  cvv?: string;
 }
 
-// Payload nhận về từ backend
+// Bản ghi thanh toán backend trả về
 export interface PaymentResponse {
-  status: "PAID" | "PAYMENT_FAILED";
-  rewardPoints: number; // Yêu cầu: 1 điểm / 10.000đ
+  id: string;
   orderId: string;
+  method: "WALLET" | "CARD" | "QR";
+  status: "PENDING" | "SUCCEEDED" | "FAILED" | "REFUNDED";
+  amount: number;
+  failureReason: string | null;
 }

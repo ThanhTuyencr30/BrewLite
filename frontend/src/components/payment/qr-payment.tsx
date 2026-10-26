@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 
 interface QRPaymentProps {
   amount: number;
@@ -14,7 +14,7 @@ export default function QRPayment({
   onBack,
   onCancel,
 }: QRPaymentProps) {
-  const [timeLeft, setTimeLeft] = useState(15 * 60); // Đếm ngược 15 phút[cite: 1]
+  const [timeLeft, setTimeLeft] = useState(15 * 60); // Đếm ngược 15 phút
   const isExpired = timeLeft <= 0;
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export default function QRPayment({
   }, [timeLeft, isExpired]);
 
   const handleCreateNewQR = () => {
-    setTimeLeft(15 * 60); // Reset lại 15 phút[cite: 1]
+    setTimeLeft(15 * 60); // Reset lại 15 phút
   };
 
   // Format thời gian thành MM:SS
@@ -40,7 +40,7 @@ export default function QRPayment({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header[cite: 5] */}
+      {/* Header */}
       <div className="flex items-center mb-6">
         <button onClick={onBack} className="mr-4 text-xl font-bold">
           ←
@@ -48,7 +48,7 @@ export default function QRPayment({
         <h2 className="text-lg font-bold text-[#4a3b32]">Thanh toán</h2>
       </div>
 
-      {/* Box Tổng thanh toán[cite: 5] */}
+      {/* Box Tổng thanh toán */}
       <div className="bg-white rounded-xl p-4 text-center mb-6 shadow-sm border border-gray-100">
         <p className="text-sm text-gray-500">Tổng thanh toán</p>
         <h3 className="text-2xl font-bold text-[#4a3b32] my-1">
@@ -57,7 +57,7 @@ export default function QRPayment({
         <p className="text-xs text-gray-400">Mã đơn hàng: {orderId}</p>
       </div>
 
-      {/* Phương thức đã chọn[cite: 5] */}
+      {/* Phương thức đã chọn */}
       <div className="bg-white rounded-xl p-4 mb-4 shadow-sm border border-gray-100 flex items-center gap-3">
         <div className="w-10 h-10 bg-[#f6f5f0] rounded flex items-center justify-center text-[#c08d60]">
           QR
@@ -70,7 +70,7 @@ export default function QRPayment({
         </div>
       </div>
 
-      {/* Box QR Code[cite: 5, 6] */}
+      {/* Box QR Code */}
       <div className="bg-white rounded-xl p-6 mb-4 shadow-sm border border-gray-100 text-center flex flex-col items-center">
         {!isExpired ? (
           <>
@@ -111,7 +111,7 @@ export default function QRPayment({
         )}
       </div>
 
-      {/* Các nút hành động dưới cùng[cite: 6] */}
+      {/* Các nút hành động dưới cùng */}
       <div className="mt-auto flex flex-col gap-3">
         <button
           onClick={onBack}

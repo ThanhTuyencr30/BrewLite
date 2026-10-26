@@ -1,5 +1,4 @@
 "use client";
-import React from "react";
 
 interface FailedStateProps {
   amount: number;
@@ -35,7 +34,7 @@ export default function FailedState({
         <p className="text-xs text-gray-400">Mã đơn hàng: {orderId}</p>
       </div>
 
-      {/* Box thông báo lỗi[cite: 7, 10] */}
+      {/* Box thông báo lỗi */}
       <div className="bg-white rounded-xl p-8 mb-4 shadow-sm border border-gray-100 text-center flex flex-col items-center">
         <h3 className="font-bold text-[#4a3b32] text-lg mb-6">
           Thanh toán thất bại!
@@ -49,7 +48,7 @@ export default function FailedState({
         </p>
       </div>
 
-      {/* Các nút hành động[cite: 7] */}
+      {/* Các nút hành động */}
       <div className="mt-auto flex flex-col gap-3">
         <button
           onClick={onRetry}

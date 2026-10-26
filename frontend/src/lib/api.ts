@@ -100,19 +100,12 @@ export function submitPayment(
   payload: PaymentRequest,
   signal?: AbortSignal
 ): Promise<PaymentResponse> {
-  const idempotencyKey = crypto.randomUUID();
-
-  // Tạo UUID giả vì backend đang dùng @IsUUID() cho orderId.
-  // (Mã "CC-000004" của frontend không phải UUID).
-  const orderId = crypto.randomUUID();
-
   return postJson<PaymentResponse>(
     "/payments",
     {
-      ...payload,
+      orderId: payload.orderId,
       method: payload.method === "E_WALLET" ? "WALLET" : payload.method,
-      idempotencyKey,
-      orderId,
+      idempotencyKey: crypto.randomUUID(),
     },
     signal,
   );
