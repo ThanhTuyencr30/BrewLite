@@ -25,6 +25,56 @@ export interface Product {
   sizes: ProductSize[];
 }
 
+export interface Promotion {
+  id: number;
+  code: string;
+  description: string | null;
+  discountType: "PERCENT" | "FIXED_AMOUNT";
+  value: number;
+  minOrderValue: number;
+  maxDiscount: number | null;
+  startsAt: string;
+  endsAt: string;
+  isAvailable: boolean;
+  availabilityMessage: string | null;
+}
+
+export interface PromotionValidation {
+  valid: true;
+  promotion: Promotion;
+  discount: number;
+  subtotal: number;
+  total: number;
+}
+
+export interface CartValidationInputItem {
+  productId: number;
+  size: ProductSize["size"];
+  quantity: number;
+  expectedUnitPrice: number;
+}
+
+export interface CartValidationResult {
+  valid: boolean;
+  subtotal: number;
+  items: {
+    productId: number;
+    size: ProductSize["size"];
+    quantity: number;
+    currentUnitPrice: number;
+    availableStock: number;
+    priceChanged: boolean;
+  }[];
+  issues: {
+    productId: number;
+    reason: "UNAVAILABLE" | "OUT_OF_STOCK" | "PRICE_CHANGED";
+    message: string;
+    productName: string;
+    requestedQuantity: number;
+    availableStock: number;
+  }[];
+}
+
 // --- PHẦN DỮ LIỆU THANH TOÁN (Bổ sung cho Task 8 & 10) ---
 
 // Các phương thức thanh toán hỗ trợ

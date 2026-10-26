@@ -1,8 +1,12 @@
 import type {
+  CartValidationResult,
+  CartValidationInputItem,
   Category,
-  Product,
   PaymentRequest,
   PaymentResponse,
+  Product,
+  Promotion,
+  PromotionValidation,
 } from "./api.types";
 
 const API_BASE_URL = (
@@ -44,7 +48,55 @@ export function getProducts(
   return fetchJson<Product[]>(`/products${query ? `?${query}` : ""}`, signal);
 }
 
-export async function submitPayment(
+async function postJson<T>(
+  path: string,
+  body: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    signal,
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const responseBody: unknown = await response.json().catch(() => null);
+    let message = `API request failed with status ${response.status}`;
+    if (responseBody && typeof responseBody === "object" && "message" in responseBody) {
+      if (typeof responseBody.message === "string") {
+        message = responseBody.message;
+      } else if (Array.isArray(responseBody.message)) {
+        const details = responseBody.message.filter(
+          (part): part is string => typeof part === "string",
+        );
+        if (details.length > 0) {
+          message = details.join(" ");
+        }
+      }
+    }
+    throw new Error(message);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+export function getPromotions(signal: AbortSignal) {
+  return fetchJson<Promotion[]>("/promotions/me", signal);
+}
+
+export function validatePromotion(code: string, items: CartValidationInputItem[]) {
+  return postJson<PromotionValidation>("/promotions/validate", { code, items });
+}
+
+export function validateCart(items: CartValidationInputItem[]) {
+  return postJson<CartValidationResult>("/cart/validate", { items });
+}
+
+export function submitPayment(
   payload: PaymentRequest,
   signal?: AbortSignal
 ): Promise<PaymentResponse> {
@@ -54,30 +106,14 @@ export async function submitPayment(
   // (Mã "CC-000004" của frontend không phải UUID).
   const orderId = crypto.randomUUID();
 
-  // Format lại payload để đưa idempotencyKey và orderId vào body
-  const requestBody = {
-    ...payload,
-    method: payload.method === "E_WALLET" ? "WALLET" : payload.method,
-    idempotencyKey: idempotencyKey,
-    orderId: orderId,
-  };
-
-  const response = await fetch(`${API_BASE_URL}/payments`, {
-    method: "POST",
-    signal,
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      // Đã xóa Idempotency-Key khỏi header vì DTO backend đang đọc từ Body
+  return postJson<PaymentResponse>(
+    "/payments",
+    {
+      ...payload,
+      method: payload.method === "E_WALLET" ? "WALLET" : payload.method,
+      idempotencyKey,
+      orderId,
     },
-    body: JSON.stringify(requestBody),
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `Payment API request failed with status ${response.status}`
-    );
-  }
-
-  return response.json() as Promise<PaymentResponse>;
+    signal,
+  );
 }
