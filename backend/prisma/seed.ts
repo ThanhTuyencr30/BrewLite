@@ -13,11 +13,12 @@ const prisma = new PrismaClient({
 });
 
 const categories = [
-  { name: 'Cà phê', slug: 'ca-phe', sortOrder: 1 },
-  { name: 'Trà trái cây', slug: 'tra-trai-cay', sortOrder: 2 },
-  { name: 'Trà sữa', slug: 'tra-sua', sortOrder: 3 },
-  { name: 'Đá xay', slug: 'da-xay', sortOrder: 4 },
-  { name: 'Khác', slug: 'khac', sortOrder: 5 },
+  { name: 'Cà phê', slug: 'ca-phe', sortOrder: 1, isActive: true },
+  { name: 'Latte', slug: 'latte', sortOrder: 2, isActive: true },
+  { name: 'Freeze', slug: 'freeze', sortOrder: 3, isActive: true },
+  { name: 'Trà', slug: 'tra', sortOrder: 4, isActive: true },
+  { name: 'Trà sữa', slug: 'tra-sua', sortOrder: 5, isActive: true },
+  { name: 'Soda', slug: 'soda', sortOrder: 6, isActive: true },
 ] as const;
 
 const toppings = [
@@ -345,9 +346,56 @@ const products: ProductSeed[] = [
   },
 ];
 
+const designMenu: Array<{
+  name: string;
+  slug: string;
+  categorySlug: (typeof categories)[number]['slug'];
+  basePrice: number;
+  stock?: number;
+}> = [
+  { name: 'Cà Phê Sữa', slug: 'ca-phe-sua', categorySlug: 'ca-phe', basePrice: 28000, stock: 0 },
+  { name: 'Cappuccino', slug: 'cappuccino', categorySlug: 'ca-phe', basePrice: 40000 },
+  { name: 'Americano', slug: 'americano', categorySlug: 'ca-phe', basePrice: 32000 },
+  { name: 'Caramel Machiatto', slug: 'caramel-macchiato', categorySlug: 'ca-phe', basePrice: 40000 },
+  { name: 'Mocha', slug: 'mocha', categorySlug: 'ca-phe', basePrice: 40000 },
+  { name: 'Cà Phê Muối', slug: 'ca-phe-muoi', categorySlug: 'ca-phe', basePrice: 40000 },
+  { name: 'Choco Latte', slug: 'choco-latte', categorySlug: 'latte', basePrice: 28000 },
+  { name: 'Matcha Latte', slug: 'matcha-latte', categorySlug: 'latte', basePrice: 45000 },
+  { name: 'Freeze Chocolate', slug: 'freeze-chocolate', categorySlug: 'freeze', basePrice: 40000 },
+  { name: 'Freeze Matcha', slug: 'freeze-matcha', categorySlug: 'freeze', basePrice: 28000 },
+  { name: 'Trà Cúc Sen Vàng', slug: 'tra-cuc-sen-vang', categorySlug: 'tra', basePrice: 28000 },
+  { name: 'Trà Ổi Hồng', slug: 'tra-oi-hong', categorySlug: 'tra', basePrice: 45000 },
+  { name: 'Trà Vải', slug: 'tra-vai', categorySlug: 'tra', basePrice: 28000 },
+  { name: 'Trà Đào', slug: 'tra-dao', categorySlug: 'tra', basePrice: 45000 },
+  { name: 'Trà Xanh Đậu Đỏ', slug: 'tra-xanh-dau-do', categorySlug: 'tra', basePrice: 40000 },
+  { name: 'Trà Đào Cam Sả', slug: 'tra-dao-cam-sa', categorySlug: 'tra', basePrice: 40000 },
+  { name: 'Trà Olong Sữa Nhài', slug: 'tra-olong-sua-nhai', categorySlug: 'tra-sua', basePrice: 40000 },
+  { name: 'Trà Olong Sữa Dừa', slug: 'tra-olong-sua-dua', categorySlug: 'tra-sua', basePrice: 28000 },
+  { name: 'Trà Sữa Truyền Thống', slug: 'tra-sua-truyen-thong', categorySlug: 'tra-sua', basePrice: 40000 },
+  { name: 'Trà Sữa HongKong', slug: 'tra-sua-hongkong', categorySlug: 'tra-sua', basePrice: 28000 },
+  { name: 'Trà Sữa Matcha', slug: 'tra-sua-matcha', categorySlug: 'tra-sua', basePrice: 28000 },
+  { name: 'Trà Sữa Đường Đen', slug: 'tra-sua-duong-den', categorySlug: 'tra-sua', basePrice: 45000 },
+  { name: 'Soda Việt Quốc', slug: 'soda-viet-quoc', categorySlug: 'soda', basePrice: 40000 },
+  { name: 'Soda Dâu', slug: 'soda-dau', categorySlug: 'soda', basePrice: 28000 },
+  { name: 'Soda Chanh', slug: 'soda-chanh', categorySlug: 'soda', basePrice: 40000 },
+  { name: 'Soda Bạc Hà', slug: 'soda-bac-ha', categorySlug: 'soda', basePrice: 28000 },
+  { name: 'Soda Chanh Dây', slug: 'soda-chanh-day', categorySlug: 'soda', basePrice: 45000 },
+];
+
+const designProducts: ProductSeed[] = designMenu.map((product) => ({
+  ...product,
+  description: `${product.name} được pha chế theo công thức BrewLite.`,
+  imageUrl: `/products/${product.slug}.png`,
+  stock: product.stock ?? 30,
+  toppingSlugs: ['tran-chau-trang', 'kem-tuoi'],
+}));
+
 async function main() {
   const categoryIds = new Map<string, number>();
   const toppingIds = new Map<string, number>();
+
+  await prisma.product.updateMany({ data: { isAvailable: false } });
+  await prisma.category.updateMany({ data: { isActive: false } });
 
   for (const category of categories) {
     const savedCategory = await prisma.category.upsert({
@@ -367,7 +415,7 @@ async function main() {
     toppingIds.set(savedTopping.slug, savedTopping.id);
   }
 
-  for (const product of products) {
+  for (const product of designProducts) {
     const categoryId = categoryIds.get(product.categorySlug);
 
     if (!categoryId) {
@@ -421,7 +469,7 @@ async function main() {
   }
 
   console.info(
-    `Seeded ${categories.length} categories, ${toppings.length} toppings and ${products.length} products.`,
+    `Seeded ${categories.length} categories, ${toppings.length} toppings and ${designProducts.length} products.`,
   );
 }
 

@@ -1,27 +1,44 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 interface ConnectionErrorProps {
   onRetry: () => void;
+  onHome?: () => void;
 }
 
-export function ConnectionError({ onRetry }: ConnectionErrorProps) {
+export function ConnectionError({ onRetry, onHome }: ConnectionErrorProps) {
+  const router = useRouter();
+
   return (
-    <section className="connection-error" aria-labelledby="connection-title">
-      <div className="connection-error__icon" aria-hidden="true">
-        <svg viewBox="0 0 64 64" role="img">
-          <path d="M13 36h33a9 9 0 0 0 0-18 14 14 0 0 0-26-5A12 12 0 0 0 13 36Z" />
-          <path d="m24 45 16-16M23 29l17 16" />
-        </svg>
+    <main className="coffee-app connection-page" aria-labelledby="connection-title">
+      <section className="connection-page__message">
+        <span className="connection-page__icon" aria-hidden="true">
+          <svg viewBox="0 0 64 64">
+            <path d="M11 25c12-11 30-11 42 0" />
+            <path d="M18 33c8-7 20-7 28 0" />
+            <path d="M26 42c3.5-3 8.5-3 12 0" />
+            <circle cx="32" cy="51" r="1.8" fill="currentColor" stroke="none" />
+            <path d="M10 10l44 44" />
+          </svg>
+        </span>
+        <h1 id="connection-title">Không thể kết nối</h1>
+        <p>Vui lòng kiểm tra mạng và thử lại</p>
+      </section>
+
+      <div className="connection-page__actions">
+        <button type="button" onClick={onRetry}>Thử lại</button>
+        <button
+          className="is-secondary"
+          type="button"
+          onClick={() => {
+            onHome?.();
+            router.push("/");
+          }}
+        >
+          Về trang chủ
+        </button>
       </div>
-      <p className="eyebrow">Mất kết nối</p>
-      <h2 id="connection-title">Không thể kết nối</h2>
-      <p>
-        BrewLite chưa lấy được menu. Hãy kiểm tra backend hoặc kết nối mạng rồi
-        thử lại nhé.
-      </p>
-      <button className="primary-button" type="button" onClick={onRetry}>
-        Thử lại
-      </button>
-    </section>
+    </main>
   );
 }
