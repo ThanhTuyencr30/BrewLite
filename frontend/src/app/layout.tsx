@@ -1,22 +1,22 @@
-import type { Metadata, Viewport } from "next";
-import type { ReactNode } from "react";
-import "./globals.css";
+import './globals.css'
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: "BrewLite — Cà phê ngon, bắt đầu ngày mới",
-  description: "Chọn món yêu thích và đặt cà phê nhanh chóng cùng BrewLite.",
-};
+  title: 'BrewLite',
+  description: 'Cà phê ngon, bắt đầu ngày mới',
+}
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  themeColor: "#F5EBDD",
-};
-
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="vi">
-      <body>{children}</body>
+      <body className={inter.className}>{children}</body>
     </html>
-  );
+  )
 }
