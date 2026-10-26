@@ -14,7 +14,7 @@ xung đột.
 
 ## 2. Cài đặt và chạy local
 
-Yêu cầu: Node.js 20 trở lên và npm.
+Yêu cầu: Node.js 24 và npm.
 
 ```bash
 # Frontend - mặc định http://localhost:3000
