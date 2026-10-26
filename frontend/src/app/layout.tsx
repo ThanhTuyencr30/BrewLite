@@ -1,10 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BrewLite — Cà phê cho ngày nhẹ tênh",
+  title: "BrewLite — Cà phê ngon, bắt đầu ngày mới",
   description: "Chọn món yêu thích và đặt cà phê nhanh chóng cùng BrewLite.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#F5EBDD",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
