@@ -192,7 +192,7 @@ model Order {
   updatedAt     DateTime             @updatedAt @db.Timestamptz(3)
   cancelledAt   DateTime?            @db.Timestamptz(3)
   cancelReason  String?
-  
+
   @@index([userId, createdAt])
   @@index([status, expiresAt])
   @@map("orders")
