@@ -100,7 +100,7 @@ export default function OrderHistoryPage() {
                   
                   <div className="flex justify-between items-center pt-3 border-t border-[#F5F0E1]">
                     <p className="text-[13px] text-[#333] font-medium">
-                      Tổng tiền: <span className="font-bold text-[14px]">{order.total.toLocaleString()}đ</span>
+                      Tổng tiền: <span className="font-bold text-[14px]">{order.total?.toLocaleString('vi-VN')}đ</span>
                     </p>
                     <Link 
                       href={`/orders/${order.id}`} 
