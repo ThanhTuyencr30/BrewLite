@@ -1,7 +1,9 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useCart } from "@/components/cart/cart-provider";
 import { ConnectionError } from "@/components/common/connection-error";
 import { getCategories, getProducts } from "@/lib/api";
 import type { Category, Product } from "@/lib/api.types";
@@ -28,6 +30,7 @@ function CartIcon() {
 }
 
 export function MenuPage() {
+  const { itemCount } = useCart();
   const [activeCategory, setActiveCategory] = useState("ca-phe");
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -93,10 +96,14 @@ export function MenuPage() {
           <button type="button" aria-label="Tài khoản">
             <AccountIcon />
           </button>
-          <button className="cart-button" type="button" aria-label="Giỏ hàng có 4 món">
+          <Link
+            aria-label={`Giỏ hàng có ${itemCount} món`}
+            className="cart-button"
+            href="/cart"
+          >
             <CartIcon />
-            <span>4</span>
-          </button>
+            {itemCount > 0 && <span>{itemCount > 99 ? "99+" : itemCount}</span>}
+          </Link>
         </div>
       </header>
 

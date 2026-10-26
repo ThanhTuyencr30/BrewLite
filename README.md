@@ -51,7 +51,26 @@ GET /categories
 ```
 
 `GET /products` trả về sản phẩm đang kinh doanh, category, giá theo size và
-cờ `isOutOfStock`. Seed hiện có 5 danh mục, 8 topping và 30 sản phẩm.
+cờ `isOutOfStock`. Seed hiện có 6 danh mục, 8 topping và 27 sản phẩm.
+
+## API giỏ hàng và mã giảm giá
+
+```http
+POST /cart/validate
+GET /promotions/me
+POST /promotions/validate
+```
+
+`POST /cart/validate` nhận `items` gồm `productId`, `size`, `quantity` và
+`expectedUnitPrice`; API kiểm tra tồn kho, giá hiện tại và trả về các thay đổi
+cần xác nhận. `GET /promotions/me` hiện trả về các mã khuyến mãi công khai (kể
+cả mã hết hạn để giao diện hiển thị trạng thái) vì ứng dụng chưa có xác thực
+người dùng. `POST /promotions/validate` nhận `code` và danh sách `items` như
+endpoint xác thực giỏ hàng; backend tự tính subtotal trước khi kiểm tra thời
+hạn, lượt sử dụng và giá trị đơn tối thiểu. Mỗi lần kiểm tra chỉ nhận một mã;
+giới hạn một mã/người/ngày sẽ được bổ sung khi hệ thống có xác thực và tạo đơn
+hàng. Seed tạo `GIAM15` (giảm 15%, đơn từ 50.000đ), `GIAM20` (giảm 20.000đ,
+đơn từ 120.000đ) và `GIAM10K` (giảm 10.000đ, đã hết hạn ngày 30/09/2026).
 
 ## Kiểm tra
 
