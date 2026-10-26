@@ -1,27 +1,86 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '../generated/prisma/client';
+import { PrismaService } from '../database/prisma.service';
 
-export interface Product {
-  id: number;
-  name: string;
-  category: string;
+const productSelect = {
+  id: true,
+  name: true,
+  slug: true,
+  description: true,
+  basePrice: true,
+  imageUrl: true,
+  stock: true,
+  category: {
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+    },
+  },
+  sizes: {
+    select: {
+      size: true,
+      additionalPrice: true,
+    },
+    orderBy: {
+      additionalPrice: 'asc',
+    },
+  },
+} satisfies Prisma.ProductSelect;
+
+type ProductRecord = Prisma.ProductGetPayload<{
+  select: typeof productSelect;
+}>;
+
+export interface FindProductsQuery {
+  search?: string;
+  category?: string;
+}
+
+export interface ProductSummary extends ProductRecord {
   price: number;
-  imageUrl: string;
-  stock: number;
-  isAvailable: boolean;
+  isOutOfStock: boolean;
 }
 
 @Injectable()
 export class ProductsService {
-  private products: Product[] = [
-    { id: 1, name: 'Cà phê sữa', category: 'Cà phê', price: 35000, imageUrl: 'https://placehold.co/300x300?text=Ca+phe+sua', stock: 30, isAvailable: true },
-    { id: 2, name: 'Americano', category: 'Cà phê', price: 40000, imageUrl: 'https://placehold.co/300x300?text=Americano', stock: 25, isAvailable: true },
-    { id: 3, name: 'Cappuccino', category: 'Cà phê', price: 45000, imageUrl: 'https://placehold.co/300x300?text=Cappuccino', stock: 20, isAvailable: true },
-    { id: 4, name: 'Trà đào', category: 'Trà', price: 39000, imageUrl: 'https://placehold.co/300x300?text=Tra+dao', stock: 0, isAvailable: true },
-  ];
+  constructor(private readonly prisma: PrismaService) {}
 
-  findAll(category?: string): Product[] {
-    return this.products
-      .filter((p) => p.isAvailable)
-      .filter((p) => !category || p.category === category);
+  async findAll(query: FindProductsQuery = {}): Promise<ProductSummary[]> {
+    const search = query.search?.trim();
+    const category = query.category?.trim();
+
+    const products = await this.prisma.product.findMany({
+      where: {
+        isAvailable: true,
+        category: {
+          isActive: true,
+          ...(category && category !== 'all' ? { slug: category } : {}),
+        },
+        ...(search
+          ? {
+              OR: [
+                { name: { contains: search, mode: 'insensitive' } },
+                { description: { contains: search, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+      },
+      select: productSelect,
+      orderBy: [
+        { category: { sortOrder: 'asc' } },
+        { name: 'asc' },
+      ],
+    });
+
+    return products.map((product) => this.toSummary(product));
+  }
+
+  private toSummary(product: ProductRecord): ProductSummary {
+    return {
+      ...product,
+      price: product.basePrice,
+      isOutOfStock: product.stock <= 0,
+    };
   }
 }
