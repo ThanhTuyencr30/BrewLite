@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@theme {
+  --color-cream: #fbf7f0;
+  --color-caramel: #9b623c;
+  --color-caramel-dark: #75452a;
+  --color-ink: #35251d;
+  --color-ink-muted: #86766d;
+}
+
 :root {
   --cream: #f6f0e5;
   --paper: #fffdf8;
@@ -24,6 +32,7 @@ html {
 
 body {
   margin: 0;
+  min-height: 100vh;
   background: var(--cream);
   color: var(--ink);
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
