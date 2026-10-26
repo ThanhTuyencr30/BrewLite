@@ -85,7 +85,12 @@ export function MenuPage() {
             Về BrewLite
           </a>
         </nav>
-        <span className="header-note">Mở cửa 07:00–22:00</span>
+        <div className="header-note">
+          <span className="header-note__hours">Mở cửa 07:00–22:00</span>
+          <a className="header-account-link" href="/profile">
+            Tài khoản <span aria-hidden="true">→</span>
+          </a>
+        </div>
       </header>
 
       <main id="top">
