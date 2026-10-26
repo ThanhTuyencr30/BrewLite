@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
-import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
-import { OrdersScheduler } from './orders.scheduler';
+import { OrdersController } from './orders.controller';
+import { OrderStateMachine } from './order-state-machine.service';
+import { PassportModule } from '@nestjs/passport';
 import { PrismaModule } from '../database/prisma.module';
+import { JwtStrategy } from './jwt.strategy';
+
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, PassportModule.register({ defaultStrategy: 'jwt' })],
   controllers: [OrdersController],
-  providers: [OrdersService, OrdersScheduler],
-  exports: [OrdersService],
+  providers: [OrdersService, OrderStateMachine, JwtStrategy],
 })
 export class OrdersModule {}

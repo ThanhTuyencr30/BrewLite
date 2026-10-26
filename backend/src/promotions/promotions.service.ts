@@ -1,112 +1,130 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { DiscountType } from '../generated/prisma/client';
+import { CartService } from '../cart/cart.service';
 import { PrismaService } from '../database/prisma.service';
+import type { ValidatePromotionDto } from './dto/validate-promotion.dto';
 
 @Injectable()
 export class PromotionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cartService: CartService,
+  ) {}
 
-  // Lấy danh sách mã khuyến mãi đang còn hiệu lực
-  async getActivePromotions() {
+  async findAvailable() {
     const now = new Date();
-    return this.prisma.promotion.findMany({
+    const promotions = await this.prisma.promotion.findMany({
       where: {
         isActive: true,
-        startsAt: { lte: now },
-        endsAt: { gte: now },
       },
-      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        code: true,
+        description: true,
+        discountType: true,
+        value: true,
+        minOrderValue: true,
+        maxDiscount: true,
+        startsAt: true,
+        endsAt: true,
+        usageLimit: true,
+        usedCount: true,
+      },
+      orderBy: { endsAt: 'asc' },
+    });
+    return promotions.map((promotion) => {
+      const isExhausted =
+        promotion.usageLimit !== null &&
+        promotion.usedCount >= promotion.usageLimit;
+      const isAvailable =
+        promotion.startsAt <= now &&
+        promotion.endsAt > now &&
+        !isExhausted;
+      const availabilityMessage = isExhausted
+        ? 'Mã giảm giá đã hết lượt sử dụng.'
+        : promotion.startsAt > now
+          ? 'Mã giảm giá chưa có hiệu lực.'
+          : promotion.endsAt <= now
+            ? `Mã ${promotion.code} đã hết hạn sử dụng.`
+            : null;
+
+      return {
+        id: promotion.id,
+        code: promotion.code,
+        description: promotion.description,
+        discountType: promotion.discountType,
+        value: promotion.value,
+        minOrderValue: promotion.minOrderValue,
+        maxDiscount: promotion.maxDiscount,
+        startsAt: promotion.startsAt,
+        endsAt: promotion.endsAt,
+        isAvailable,
+        availabilityMessage,
+      };
     });
   }
 
-  // Áp dụng khuyến mãi vào đơn hàng
-  async applyPromotionToOrder(orderId: string, promotionCode: string) {
+  async validate(input: ValidatePromotionDto) {
     const now = new Date();
-
-    // 1. Kiểm tra đơn hàng
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
-    });
-
-    if (!order) {
-      throw new NotFoundException('Không tìm thấy đơn hàng.');
-    }
-
-    if (order.status !== 'PENDING') {
-      throw new BadRequestException('Chỉ có thể áp mã giảm giá cho đơn hàng đang chờ thanh toán.');
-    }
-
-    // 2. Tìm mã khuyến mãi
     const promotion = await this.prisma.promotion.findUnique({
-      where: { code: promotionCode.toUpperCase() },
+      where: { code: input.code.trim().toUpperCase() },
     });
 
-    if (!promotion || !promotion.isActive) {
-      throw new BadRequestException('Mã giảm giá không tồn tại hoặc đã bị tắt.');
+    if (
+      !promotion ||
+      !promotion.isActive ||
+      promotion.startsAt > now ||
+      promotion.endsAt <= now
+    ) {
+      throw new BadRequestException('Mã giảm giá không hợp lệ hoặc đã hết hạn.');
     }
 
-    if (promotion.startsAt > now || promotion.endsAt < now) {
-      throw new BadRequestException('Mã giảm giá chưa bắt đầu hoặc đã hết hạn.');
-    }
-
-    if (promotion.usageLimit && promotion.usedCount >= promotion.usageLimit) {
-      throw new BadRequestException('Mã giảm giá đã hết lượt sử dụng.');
-    }
-
-    if (order.subtotal < promotion.minOrderValue) {
+    const cart = await this.cartService.validateCart({ items: input.items });
+    if (!cart.valid) {
       throw new BadRequestException(
-        `Đơn hàng tối thiểu phải từ ${promotion.minOrderValue.toLocaleString()}đ để dùng mã này.`,
+        cart.issues.map((issue) => issue.message).join(' '),
       );
     }
 
-    // 3. Tính số tiền giảm giá
-    let discountAmount = 0;
-    if (promotion.discountType === 'PERCENT') {
-      discountAmount = Math.round((order.subtotal * promotion.value) / 100);
-      if (promotion.maxDiscount && discountAmount > promotion.maxDiscount) {
-        discountAmount = promotion.maxDiscount;
-      }
-    } else {
-      discountAmount = promotion.value;
+    if (promotion.usageLimit !== null && promotion.usedCount >= promotion.usageLimit) {
+      throw new BadRequestException('Mã giảm giá đã hết lượt sử dụng.');
     }
 
-    discountAmount = Math.min(discountAmount, order.subtotal);
-    const newTotal = Math.max(0, order.subtotal - discountAmount);
-
-    // 4. Cập nhật Order trong DB
-    return this.prisma.order.update({
-      where: { id: orderId },
-      data: {
-        promotionId: promotion.id,
-        discount: discountAmount,
-        total: newTotal,
-      },
-      include: {
-        items: true,
-        promotion: true,
-      },
-    });
-  }
-
-  // Gỡ khuyến mãi khỏi đơn hàng
-  async removePromotionFromOrder(orderId: string) {
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
-    });
-
-    if (!order) {
-      throw new NotFoundException('Không tìm thấy đơn hàng.');
+    if (cart.subtotal < promotion.minOrderValue) {
+      throw new BadRequestException(
+        `Đơn hàng cần đạt tối thiểu ${promotion.minOrderValue.toLocaleString('vi-VN')}đ để sử dụng mã này.`,
+      );
     }
 
-    return this.prisma.order.update({
-      where: { id: orderId },
-      data: {
-        promotionId: null,
-        discount: 0,
-        total: order.subtotal,
+    const rawDiscount =
+      promotion.discountType === DiscountType.PERCENT
+        ? Math.floor((cart.subtotal * promotion.value) / 100)
+        : promotion.value;
+    const discount = Math.min(
+      cart.subtotal,
+      promotion.maxDiscount === null
+        ? rawDiscount
+        : Math.min(rawDiscount, promotion.maxDiscount),
+    );
+
+    return {
+      valid: true as const,
+      promotion: {
+        id: promotion.id,
+        code: promotion.code,
+        description: promotion.description,
+        discountType: promotion.discountType,
+        value: promotion.value,
+        minOrderValue: promotion.minOrderValue,
+        maxDiscount: promotion.maxDiscount,
+        startsAt: promotion.startsAt,
+        endsAt: promotion.endsAt,
+        isAvailable: true,
+        availabilityMessage: null,
       },
-      include: {
-        items: true,
-      },
-    });
+      discount,
+      subtotal: cart.subtotal,
+      total: cart.subtotal - discount,
+    };
   }
 }

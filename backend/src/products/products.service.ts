@@ -32,6 +32,17 @@ type ProductRecord = Prisma.ProductGetPayload<{
   select: typeof productSelect;
 }>;
 
+const menuOrder = new Map(
+  [
+    'ca-phe-sua', 'cappuccino', 'americano', 'caramel-macchiato', 'mocha', 'ca-phe-muoi',
+    'choco-latte', 'matcha-latte', 'freeze-chocolate', 'freeze-matcha',
+    'tra-cuc-sen-vang', 'tra-oi-hong', 'tra-vai', 'tra-dao', 'tra-xanh-dau-do', 'tra-dao-cam-sa',
+    'tra-olong-sua-nhai', 'tra-olong-sua-dua', 'tra-sua-truyen-thong', 'tra-sua-hongkong',
+    'tra-sua-matcha', 'tra-sua-duong-den', 'soda-viet-quoc', 'soda-dau', 'soda-chanh',
+    'soda-bac-ha', 'soda-chanh-day',
+  ].map((slug, index) => [slug, index]),
+);
+
 export interface FindProductsQuery {
   search?: string;
   category?: string;
@@ -73,7 +84,13 @@ export class ProductsService {
       ],
     });
 
-    return products.map((product) => this.toSummary(product));
+    return products
+      .map((product) => this.toSummary(product))
+      .sort(
+        (left, right) =>
+          (menuOrder.get(left.slug) ?? Number.MAX_SAFE_INTEGER) -
+          (menuOrder.get(right.slug) ?? Number.MAX_SAFE_INTEGER),
+      );
   }
 
   private toSummary(product: ProductRecord): ProductSummary {
