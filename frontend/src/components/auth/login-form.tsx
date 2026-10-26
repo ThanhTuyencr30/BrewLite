@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { login } from "@/lib/api";
+import { ApiError, login } from "@/lib/api";
 import { AuthResultDialog, type DialogTone } from "./auth-result-dialog";
 import { AuthShell } from "./auth-shell";
 import styles from "./auth.module.css";
@@ -15,6 +15,7 @@ interface DialogState {
   title: string;
   message: string;
   primaryLabel: string;
+  destination?: string;
 }
 
 export function LoginForm() {
@@ -32,17 +33,32 @@ export function LoginForm() {
     try {
       const result = await login({ email: email.trim(), password });
       window.localStorage.setItem(ACCESS_TOKEN_KEY, result.accessToken);
+      const requestedDestination = new URLSearchParams(
+        window.location.search,
+      ).get("next");
+      const destination =
+        requestedDestination?.startsWith("/") &&
+        !requestedDestination.startsWith("//")
+          ? requestedDestination
+          : "/";
       setDialog({
         tone: "success",
         title: "Đăng nhập thành công",
         message: "Chào mừng bạn quay trở lại COLDEN COFFEE.",
-        primaryLabel: "Vào tài khoản",
+        primaryLabel:
+          destination === "/" ? "Về trang chủ" : "Tiếp tục",
+        destination,
       });
-    } catch {
+    } catch (error: unknown) {
       setDialog({
         tone: "error",
         title: "Đăng nhập thất bại",
-        message: "Email hoặc mật khẩu chưa chính xác. Hãy kiểm tra và thử lại nhé.",
+        message:
+          error instanceof ApiError
+            ? error.status === 401
+              ? "Email hoặc mật khẩu chưa chính xác. Hãy kiểm tra và thử lại nhé."
+              : "Hệ thống chưa thể xử lý đăng nhập. Vui lòng thử lại sau ít phút."
+            : "Chưa thể kết nối để đăng nhập. Vui lòng kiểm tra kết nối và thử lại.",
         primaryLabel: "Thử lại",
       });
     } finally {
@@ -50,9 +66,9 @@ export function LoginForm() {
     }
   }
 
-  function continueToAccount() {
+  function continueAfterLogin() {
     if (dialog?.tone === "success") {
-      router.push("/profile");
+      router.replace(dialog.destination ?? "/");
       return;
     }
 
@@ -127,7 +143,7 @@ export function LoginForm() {
       {dialog && (
         <AuthResultDialog
           message={dialog.message}
-          onPrimary={continueToAccount}
+          onPrimary={continueAfterLogin}
           onSecondary={() => setDialog(null)}
           primaryLabel={dialog.primaryLabel}
           tone={dialog.tone}
