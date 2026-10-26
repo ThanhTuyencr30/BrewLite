@@ -28,11 +28,17 @@ export class OrdersScheduler {
 
     for (const order of expiredOrders) {
       await this.prisma.$transaction(async (tx) => {
-        // 1. Cập nhật trạng thái đơn thành CANCELLED
-        await tx.order.update({
-          where: { id: order.id },
-          data: { status: OrderStatus.CANCELLED },
+        // 1. Chỉ hủy nếu đơn vẫn đang chờ thanh toán (tránh hủy đơn vừa được thanh toán)
+        const cancelled = await tx.order.updateMany({
+          where: { id: order.id, status: OrderStatus.PENDING, version: order.version },
+          data: {
+            status: OrderStatus.CANCELLED,
+            cancelledAt: now,
+            cancelReason: 'Quá hạn thanh toán',
+            version: { increment: 1 },
+          },
         });
+        if (cancelled.count === 0) return;
 
         // 2. Ghi lịch sử trạng thái
         await tx.orderStatusHistory.create({

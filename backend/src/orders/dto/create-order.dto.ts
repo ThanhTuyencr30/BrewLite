@@ -1,14 +1,25 @@
-import { IsArray, IsNotEmpty, IsOptional, IsString, ValidateNested, IsInt, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import { SizeCode, IceLevel } from '../../generated/prisma/enums';
+import {
+  ArrayNotEmpty,
+  IsArray,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateNested,
+} from 'class-validator';
+import { IceLevel, SizeCode } from '../../generated/prisma/enums';
+
 class OrderItemDto {
   @IsInt()
   productId: number;
 
-  @IsString()
+  @IsEnum(SizeCode)
   size: SizeCode;
 
   @IsOptional()
+  @IsEnum(IceLevel)
   iceLevel?: IceLevel;
 
   @IsInt()
@@ -23,6 +34,7 @@ class OrderItemDto {
 
 export class CreateOrderDto {
   @IsArray()
+  @ArrayNotEmpty()
   @ValidateNested({ each: true })
   @Type(() => OrderItemDto)
   items: OrderItemDto[];
