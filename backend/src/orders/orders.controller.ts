@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, ParseUUIDPipe, Req } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 
@@ -15,7 +15,7 @@ export class OrdersController {
 
   // 👇 THÊM ROUTE NÀY ĐỂ FRONTEND LẤY THÔNG TIN ĐƠN HÀNG
   @Get(':id')
-  async getOrderById(@Param('id') id: string) {
+  async getOrderById(@Param('id', ParseUUIDPipe) id: string) {
     return await this.ordersService.findOne(id);
   }
 }

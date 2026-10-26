@@ -2,61 +2,81 @@
 
 import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_BASE_URL } from '@/lib/api';
+import type { Order, Promotion } from '../order.types';
 
 export default function MobileOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const orderId = resolvedParams.id;
   const router = useRouter();
 
-  const [order, setOrder] = useState<any>(null);
+  const [order, setOrder] = useState<Order | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Danh sách voucher từ API
-  const [vouchers, setVouchers] = useState<any[]>([]);
-  const [loadingVouchers, setLoadingVouchers] = useState<boolean>(false);
+  const [vouchers, setVouchers] = useState<Promotion[]>([]);
+  const [loadingVouchers, setLoadingVouchers] = useState<boolean>(true);
   const [showVoucherSheet, setShowVoucherSheet] = useState<boolean>(false);
-
-  // 1. Tải thông tin đơn hàng
-  const fetchOrder = () => {
-    if (!orderId) return;
-    fetch(`http://localhost:3001/orders/${orderId}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setOrder(data);
-        setLoading(false);
-
-        if (data.status === 'PENDING' && data.expiresAt) {
-          const expiresTime = new Date(data.expiresAt).getTime();
-          const now = new Date().getTime();
-          const secondsRemaining = Math.max(0, Math.floor((expiresTime - now) / 1000));
-          setTimeLeft(secondsRemaining);
-        }
-      })
-      .catch((err) => {
-        console.error('Lỗi tải đơn hàng:', err);
-        setOrder(null);
-        setLoading(false);
-      });
-  };
+  const [refreshVersion, setRefreshVersion] = useState<number>(0);
 
   useEffect(() => {
-    fetchOrder();
-  }, [orderId]);
+    let isActive = true;
+
+    const loadOrder = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/orders/${orderId}`);
+        if (!response.ok) {
+          throw new Error(`Không thể tải đơn hàng (HTTP ${response.status}).`);
+        }
+
+        const data = (await response.json()) as Order;
+        if (!isActive) return;
+
+        setOrder(data);
+        if (data.status === 'PENDING' && data.expiresAt) {
+          const expiresTime = new Date(data.expiresAt).getTime();
+          const secondsRemaining = Math.max(0, Math.floor((expiresTime - Date.now()) / 1000));
+          setTimeLeft(secondsRemaining);
+        }
+      } catch (error) {
+        console.error('Lỗi tải đơn hàng:', error);
+        if (isActive) setOrder(null);
+      } finally {
+        if (isActive) setLoading(false);
+      }
+    };
+
+    void loadOrder();
+    return () => {
+      isActive = false;
+    };
+  }, [orderId, refreshVersion]);
 
   // 2. Tải danh sách mã giảm giá từ backend
   useEffect(() => {
-    setLoadingVouchers(true);
-    fetch('http://localhost:3001/promotions')
-      .then((res) => res.json())
-      .then((data) => {
-        setVouchers(Array.isArray(data) ? data : []);
-        setLoadingVouchers(false);
-      })
-      .catch((err) => {
-        console.error('Lỗi tải danh sách mã giảm giá:', err);
-        setLoadingVouchers(false);
-      });
+    let isActive = true;
+
+    const loadPromotions = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/promotions`);
+        if (!response.ok) {
+          throw new Error(`Không thể tải mã giảm giá (HTTP ${response.status}).`);
+        }
+
+        const data = (await response.json()) as Promotion[];
+        if (isActive) setVouchers(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error('Lỗi tải danh sách mã giảm giá:', error);
+      } finally {
+        if (isActive) setLoadingVouchers(false);
+      }
+    };
+
+    void loadPromotions();
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   // 3. Đếm ngược thời gian thanh toán
@@ -67,7 +87,7 @@ export default function MobileOrderPage({ params }: { params: Promise<{ id: stri
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          setOrder((curr: any) => (curr ? { ...curr, status: 'CANCELLED' } : null));
+          setOrder((currentOrder) => currentOrder ? { ...currentOrder, status: 'CANCELLED' } : null);
           return 0;
         }
         return prev - 1;
@@ -85,17 +105,20 @@ export default function MobileOrderPage({ params }: { params: Promise<{ id: stri
 
   // 4. Áp dụng mã giảm giá qua API Backend
   const handleApplyVoucher = async (code: string) => {
+    if (!order) return;
+
     try {
-      const res = await fetch('http://localhost:3001/promotions/apply', {
+      const res = await fetch(`${API_BASE_URL}/promotions/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId: order.id, code }),
       });
-      const data = await res.json();
       if (res.ok) {
+        const data = (await res.json()) as Order;
         setOrder(data);
         setShowVoucherSheet(false);
       } else {
+        const data = (await res.json()) as { message?: string };
         alert(data.message || 'Không thể áp dụng mã');
       }
     } catch (err) {
@@ -105,14 +128,17 @@ export default function MobileOrderPage({ params }: { params: Promise<{ id: stri
 
   // 5. Gỡ mã giảm giá qua API Backend
   const handleRemoveVoucher = async () => {
+    if (!order) return;
+
     try {
-      const res = await fetch(`http://localhost:3001/promotions/remove/${order.id}`, {
+      const res = await fetch(`${API_BASE_URL}/promotions/remove/${order.id}`, {
         method: 'DELETE',
       });
-      const data = await res.json();
       if (res.ok) {
+        const data = (await res.json()) as Order;
         setOrder(data);
       } else {
+        const data = (await res.json()) as { message?: string };
         alert(data.message || 'Không thể gỡ mã');
       }
     } catch (err) {
@@ -124,7 +150,7 @@ export default function MobileOrderPage({ params }: { params: Promise<{ id: stri
   const handlePayment = async () => {
     if (!order) return;
     try {
-      const res = await fetch('http://localhost:3001/payments', {
+      const res = await fetch(`${API_BASE_URL}/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -134,11 +160,11 @@ export default function MobileOrderPage({ params }: { params: Promise<{ id: stri
           amount: order.total,
         }),
       });
-      const data = await res.json();
       if (res.ok) {
         alert('Thanh toán thành công!');
-        fetchOrder();
+        setRefreshVersion((version) => version + 1);
       } else {
+        const data = (await res.json()) as { message?: string };
         alert(data.message || 'Thanh toán thất bại');
       }
     } catch (error) {
@@ -194,8 +220,8 @@ export default function MobileOrderPage({ params }: { params: Promise<{ id: stri
               Đơn hàng chưa có sản phẩm nào.
             </div>
           ) : (
-            order.items.map((item: any, idx: number) => (
-              <div key={idx} className="bg-white rounded-2xl p-3.5 shadow-xs flex gap-3.5 items-center border border-[#EFEBE4]">
+            order.items.map((item) => (
+              <div key={item.id} className="bg-white rounded-2xl p-3.5 shadow-xs flex gap-3.5 items-center border border-[#EFEBE4]">
                 <div className="w-14 h-14 bg-[#F2EDE4] rounded-xl flex-shrink-0 flex items-center justify-center text-xl text-[#A67C52] border border-[#E5DDD0]">
                   ☕
                 </div>

@@ -2,39 +2,51 @@
 
 import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_BASE_URL } from '@/lib/api';
+import type { Order } from '../../order.types';
 
 export default function OrderPaymentPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const orderId = resolvedParams.id;
   const router = useRouter();
 
-  const [order, setOrder] = useState<any>(null);
+  const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // 1. Tải thông tin đơn hàng
-  const fetchOrder = async () => {
-    try {
-      const res = await fetch(`http://localhost:3001/orders/${orderId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setOrder(data);
-      }
-    } catch (err) {
-      console.error('Lỗi lấy trạng thái đơn:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 2. Polling mỗi 3 giây để cập nhật trạng thái đơn hàng tự động
   useEffect(() => {
-    fetchOrder();
+    let isActive = true;
 
-    const interval = setInterval(() => {
-      fetchOrder();
+    const loadOrder = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/orders/${orderId}`);
+        if (!response.ok) {
+          throw new Error(`Không thể tải đơn hàng (HTTP ${response.status}).`);
+        }
+
+        const data = (await response.json()) as Order;
+        if (isActive) {
+          setOrder(data);
+          if (data.status !== 'PENDING' && intervalId !== undefined) {
+            window.clearInterval(intervalId);
+          }
+        }
+      } catch (error) {
+        console.error('Lỗi lấy trạng thái đơn:', error);
+        if (isActive) setOrder(null);
+      } finally {
+        if (isActive) setLoading(false);
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      void loadOrder();
     }, 3000);
+    void loadOrder();
 
-    return () => clearInterval(interval);
+    return () => {
+      isActive = false;
+      window.clearInterval(intervalId);
+    };
   }, [orderId]);
 
   if (loading) {
@@ -98,6 +110,33 @@ export default function OrderPaymentPage({ params }: { params: Promise<{ id: str
             </button>
           </div>
 
+        </div>
+      </div>
+    );
+  }
+
+  if (order.status === 'PAID') {
+    return (
+      <div className="min-h-screen bg-[#1E1E1E] flex justify-center items-center py-6 px-3 font-sans">
+        <div className="w-[390px] h-[844px] bg-[#F5EDE1] rounded-[44px] shadow-2xl flex flex-col justify-between p-6 border-4 border-[#33312E] relative overflow-hidden">
+          <div className="flex-1 flex flex-col items-center justify-center text-center px-2">
+            <div className="w-[84px] h-[84px] rounded-full bg-[#E2F4E9] text-[#2E7D32] flex items-center justify-center mb-6 text-4xl">
+              ✓
+            </div>
+            <h2 className="text-[21px] font-bold text-[#3E2723] mb-3">
+              Thanh toán thành công
+            </h2>
+            <p className="text-[12.5px] text-[#6D5D53] leading-[1.6] max-w-[290px]">
+              Đơn {order.code} đã được xác nhận thanh toán.
+            </p>
+          </div>
+
+          <button
+            onClick={() => router.push(`/orders/${order.id}`)}
+            className="w-full py-4 rounded-[18px] bg-[#B98353] hover:bg-[#A77244] text-white font-bold text-[14px] shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+          >
+            Xem đơn hàng
+          </button>
         </div>
       </div>
     );
