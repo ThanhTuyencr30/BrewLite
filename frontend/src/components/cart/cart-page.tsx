@@ -2,10 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/components/cart/cart-provider";
 import { formatCurrency } from "@/lib/format";
-import { validateCart, validatePromotion } from "@/lib/api";
+import { ApiError, createOrder, validateCart, validatePromotion } from "@/lib/api";
+import { clearAccessToken, getAccessToken, loginUrl } from "@/lib/auth-token";
 import type { CartValidationResult } from "@/lib/api.types";
 
 type Confirmation =
@@ -13,6 +15,7 @@ type Confirmation =
   | { kind: "clear" };
 
 export function CartPage() {
+  const router = useRouter();
   const {
     items,
     itemCount,
@@ -28,7 +31,6 @@ export function CartPage() {
   const [validation, setValidation] = useState<CartValidationResult | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
-  const [authNotice, setAuthNotice] = useState("");
 
   const cartItems = useMemo(
     () =>
@@ -90,9 +92,33 @@ export function CartPage() {
         setValidation(result);
         return;
       }
-      setShowLogin(true);
-      setAuthNotice("");
+
+      const token = getAccessToken();
+      if (!token) {
+        setShowLogin(true);
+        return;
+      }
+
+      const order = await createOrder(
+        {
+          items: items.map((item) => ({
+            productId: item.productId,
+            size: item.size,
+            quantity: item.quantity,
+          })),
+          discountCode: appliedPromotion?.promotion.code,
+        },
+        token,
+      );
+      clearCart();
+      setAppliedPromotion(null);
+      router.push(`/payment?orderId=${order.id}&amount=${order.total}`);
     } catch (error: unknown) {
+      if (error instanceof ApiError && error.status === 401) {
+        clearAccessToken();
+        setShowLogin(true);
+        return;
+      }
       setCheckoutError(
         error instanceof Error
           ? error.message
@@ -222,7 +248,6 @@ export function CartPage() {
                       <TrashIcon />
                     </button>
                   </div>
-                  {authNotice && <p className="cart-login-notice" role="alert">{authNotice}</p>}
                   <div className="cart-item__footer">
                     <div className="cart-quantity">
                       <button
@@ -378,19 +403,16 @@ export function CartPage() {
               được giữ nguyên.
             </p>
             <div className="cart-confirm-dialog__actions">
-              <button
+              <Link
                 className="is-danger"
-                onClick={() => setAuthNotice("Chức năng đăng nhập chưa được kết nối.")}
-                type="button"
+                href={loginUrl("/cart")}
+                onClick={() => setShowLogin(false)}
               >
                 Đăng nhập
-              </button>
-              <button
-                onClick={() => setAuthNotice("Chức năng đăng ký chưa được kết nối.")}
-                type="button"
-              >
+              </Link>
+              <Link href="/register" onClick={() => setShowLogin(false)}>
                 Đăng ký tài khoản
-              </button>
+              </Link>
             </div>
             <button className="cart-login-dismiss" onClick={() => setShowLogin(false)} type="button">
               Để sau

@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service'; 
 import {
@@ -11,6 +12,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderStateMachine } from './order-state-machine.service';
 
 const ORDER_PAYMENT_WINDOW_MS = 15 * 60 * 1000;
+const ORDER_CODE_ATTEMPTS = 3;
 
 type ProcessedOrderItem = {
   productId: number;
@@ -116,13 +118,12 @@ export class OrdersService {
         });
       }
 
-      // 3.5. Trả lại mã giảm giá (Nếu có)
+      // 3.5. Trả lại lượt dùng mã giảm giá (Nếu có)
       if (order.promotionId) {
-        // Giả sử bảng Promotion có trường usedCount
-        // await tx.promotion.update({
-        //   where: { id: order.promotionId },
-        //   data: { usedCount: { decrement: 1 } }
-        // });
+        await tx.promotion.updateMany({
+          where: { id: order.promotionId, usedCount: { gt: 0 } },
+          data: { usedCount: { decrement: 1 } },
+        });
       }
 
       return { message: 'Hủy đơn thành công', orderId };
@@ -131,6 +132,24 @@ export class OrdersService {
 
   // 4. Tạo đơn hàng (Transaction: kiểm tra giá/tồn kho, áp mã giảm giá, trừ kho)
   async createOrder(userId: string, dto: CreateOrderDto) {
+    // Mã đơn sinh ngẫu nhiên; nếu trùng (lỗi unique P2002) thì tạo lại toàn bộ transaction.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await this.createOrderOnce(userId, dto);
+      } catch (error: unknown) {
+        const isCodeConflict =
+          typeof error === 'object' &&
+          error !== null &&
+          'code' in error &&
+          error.code === 'P2002';
+        if (!isCodeConflict || attempt >= ORDER_CODE_ATTEMPTS) {
+          throw error;
+        }
+      }
+    }
+  }
+
+  private createOrderOnce(userId: string, dto: CreateOrderDto) {
     return this.prisma.$transaction(async (tx) => {
       let subtotal = 0;
       const processedItems: ProcessedOrderItem[] = [];
@@ -280,7 +299,6 @@ export class OrdersService {
   }
 
   private generateOrderCode(): string {
-    const randomNum = Math.floor(100000 + Math.random() * 900000);
-    return `CC-${randomNum}`;
+    return `CC-${randomInt(100000, 1000000)}`;
   }
 }

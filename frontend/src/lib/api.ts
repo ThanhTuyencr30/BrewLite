@@ -2,16 +2,32 @@ import type {
   CartValidationResult,
   CartValidationInputItem,
   Category,
+  CreateOrderRequest,
+  LoginRequest,
+  LoginResponse,
+  Order,
   PaymentRequest,
   PaymentResponse,
   Product,
   Promotion,
   PromotionValidation,
+  RegisterRequest,
+  User,
 } from "./api.types";
 
 const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"
 ).replace(/\/$/, "");
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
 
 export async function fetchJson<T>(
   path: string,
@@ -22,32 +38,16 @@ export async function fetchJson<T>(
   if (options.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
-
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers,
   });
 
   if (!response.ok) {
-    let message = `API request failed with status ${response.status}`;
-    if (response.headers.get("content-type")?.includes("application/json")) {
-      const body: unknown = await response.json();
-      if (
-        typeof body === "object" &&
-        body !== null &&
-        "message" in body
-      ) {
-        if (typeof body.message === "string") {
-          message = body.message;
-        } else if (
-          Array.isArray(body.message) &&
-          body.message.every((item): item is string => typeof item === "string")
-        ) {
-          message = body.message.join(", ");
-        }
-      }
-    }
-    throw new Error(message);
+    throw new ApiError(
+      await readErrorMessage(response),
+      response.status,
+    );
   }
 
   return response.json() as Promise<T>;
@@ -77,10 +77,33 @@ export function getProducts(
   });
 }
 
+function authHeaders(token?: string): Record<string, string> {
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function readErrorMessage(response: Response) {
+  const responseBody: unknown = await response.json().catch(() => null);
+  let message = `API request failed with status ${response.status}`;
+  if (responseBody && typeof responseBody === "object" && "message" in responseBody) {
+    if (typeof responseBody.message === "string") {
+      message = responseBody.message;
+    } else if (Array.isArray(responseBody.message)) {
+      const details = responseBody.message.filter(
+        (part): part is string => typeof part === "string",
+      );
+      if (details.length > 0) {
+        message = details.join(" ");
+      }
+    }
+  }
+  return message;
+}
+
 async function postJson<T>(
   path: string,
   body: unknown,
   signal?: AbortSignal,
+  token?: string,
 ): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
@@ -88,26 +111,13 @@ async function postJson<T>(
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
+      ...authHeaders(token),
     },
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
-    const responseBody: unknown = await response.json().catch(() => null);
-    let message = `API request failed with status ${response.status}`;
-    if (responseBody && typeof responseBody === "object" && "message" in responseBody) {
-      if (typeof responseBody.message === "string") {
-        message = responseBody.message;
-      } else if (Array.isArray(responseBody.message)) {
-        const details = responseBody.message.filter(
-          (part): part is string => typeof part === "string",
-        );
-        if (details.length > 0) {
-          message = details.join(" ");
-        }
-      }
-    }
-    throw new Error(message);
+    throw new ApiError(await readErrorMessage(response), response.status);
   }
 
   return response.json() as Promise<T>;
@@ -127,6 +137,7 @@ export function validateCart(items: CartValidationInputItem[]) {
 
 export function submitPayment(
   payload: PaymentRequest,
+  token: string,
   signal?: AbortSignal
 ): Promise<PaymentResponse> {
   return postJson<PaymentResponse>(
@@ -137,5 +148,42 @@ export function submitPayment(
       idempotencyKey: crypto.randomUUID(),
     },
     signal,
+    token,
   );
+}
+
+export function register(data: RegisterRequest, signal?: AbortSignal) {
+  return postJson<User>("/auth/register", data, signal);
+}
+
+export function login(data: LoginRequest, signal?: AbortSignal) {
+  return postJson<LoginResponse>("/auth/login", data, signal);
+}
+
+export async function getMe(
+  token: string,
+  signal?: AbortSignal,
+): Promise<User> {
+  const response = await fetch(`${API_BASE_URL}/auth/me`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    },
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status === 401
+        ? "Your session has expired."
+        : "Unable to load your account.",
+      response.status,
+    );
+  }
+
+  return response.json() as Promise<User>;
+}
+
+export function createOrder(data: CreateOrderRequest, token: string) {
+  return postJson<Order>("/orders", data, undefined, token);
 }

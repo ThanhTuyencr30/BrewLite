@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useCart } from "@/components/cart/cart-provider";
 import { ConnectionError } from "@/components/common/connection-error";
-import { getCategories, getProducts } from "@/lib/api";
-import type { Category, Product } from "@/lib/api.types";
+import { ApiError, getCategories, getMe, getProducts } from "@/lib/api";
+import type { Category, Product, User } from "@/lib/api.types";
+import { clearAccessToken, getAccessToken } from "@/lib/auth-token";
 import { MenuSkeleton } from "./menu-skeleton";
 import { ProductCard } from "./product-card";
 
@@ -37,6 +38,37 @@ export function MenuPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [accountUser, setAccountUser] = useState<User | null>(null);
+  const [accountLoadFailed, setAccountLoadFailed] = useState(false);
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (token === null) {
+      return;
+    }
+
+    const controller = new AbortController();
+    async function loadAccount(accessToken: string) {
+      try {
+        setAccountUser(await getMe(accessToken, controller.signal));
+      } catch (error: unknown) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        if (error instanceof ApiError && error.status === 401) {
+          clearAccessToken();
+          return;
+        }
+
+        setAccountLoadFailed(true);
+      }
+    }
+
+    void loadAccount(token);
+    return () => controller.abort();
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -93,9 +125,19 @@ export function MenuPage() {
         </div>
 
         <div className="coffee-header__actions">
-          <button type="button" aria-label="Tài khoản">
+          <Link
+            aria-label={
+              accountUser
+                ? `Tài khoản của ${accountUser.fullName || accountUser.email}`
+                : accountLoadFailed
+                  ? "Không tải được tài khoản. Chạm để thử lại."
+                  : "Đăng nhập tài khoản"
+            }
+            className="account-button"
+            href={accountUser || accountLoadFailed ? "/profile" : "/login"}
+          >
             <AccountIcon />
-          </button>
+          </Link>
           <Link
             aria-label={`Giỏ hàng có ${itemCount} món`}
             className="cart-button"

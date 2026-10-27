@@ -104,3 +104,67 @@ export interface PaymentResponse {
   amount: number;
   failureReason: string | null;
 }
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  fullName?: string;
+  phone?: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  fullName: string | null;
+  phone: string | null;
+  loyaltyPoints: number;
+}
+
+export interface LoginResponse {
+  accessToken: string;
+  user: User;
+}
+
+export type OrderStatus =
+  | "PENDING"
+  | "PAID"
+  | "PREPARING"
+  | "READY"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "PAYMENT_FAILED";
+
+export interface CreateOrderRequest {
+  items: { productId: number; size: ProductSize["size"]; quantity: number }[];
+  discountCode?: string;
+}
+
+export interface OrderItem {
+  id: number;
+  productId: number;
+  productName: string;
+  size: ProductSize["size"];
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  product?: { imageUrl: string };
+}
+
+export interface Order {
+  id: string;
+  code: string;
+  status: OrderStatus;
+  subtotal: number;
+  discount: number;
+  total: number;
+  expiresAt: string | null;
+  createdAt: string;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  items: OrderItem[];
+}

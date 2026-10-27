@@ -2,7 +2,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ScreenState, PaymentMethod } from "@/lib/api.types";
-import { submitPayment } from "@/lib/api";
+import { ApiError, submitPayment } from "@/lib/api";
+import { clearAccessToken, getAccessToken, loginUrl } from "@/lib/auth-token";
 import MethodSelection from "@/components/payment/method-selection";
 import CardForm from "@/components/payment/card-form";
 import QRPayment from "@/components/payment/qr-payment";
@@ -28,12 +29,21 @@ export default function PaymentFlow({ orderId, amount }: PaymentFlowProps) {
   const [paidAmount, setPaidAmount] = useState(amount);
   const [errorMessage, setErrorMessage] = useState<string>();
 
+  const redirectToLogin = () =>
+    router.push(loginUrl(`/payment?orderId=${orderId}&amount=${amount}`));
+
   const handleProcessPayment = async (selectedMethod: PaymentMethod) => {
+    const token = getAccessToken();
+    if (!token) {
+      redirectToLogin();
+      return;
+    }
+
     setScreen("PROCESSING");
     setErrorMessage(undefined);
 
     try {
-      const payment = await submitPayment({ orderId, method: selectedMethod });
+      const payment = await submitPayment({ orderId, method: selectedMethod }, token);
       setPaidAmount(payment.amount);
 
       if (payment.status === "SUCCEEDED") {
@@ -47,6 +57,11 @@ export default function PaymentFlow({ orderId, amount }: PaymentFlowProps) {
       }
       // PENDING: giữ màn hình đang xử lý trong lúc chờ cổng thanh toán xác nhận.
     } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        clearAccessToken();
+        redirectToLogin();
+        return;
+      }
       setErrorMessage(error instanceof Error ? error.message : undefined);
       setScreen("FAILED");
     }
@@ -81,6 +96,7 @@ export default function PaymentFlow({ orderId, amount }: PaymentFlowProps) {
 
           <div className="flex-1">
             <MethodSelection
+              amount={paidAmount}
               onSelect={(selected) => {
                 setMethod(selected);
                 if (selected === "CARD") setScreen("CARD_FORM");
