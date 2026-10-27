@@ -17,8 +17,8 @@ export class CreatePaymentDto {
   @MaxLength(128)
   idempotencyKey: string;
 
-  @IsIn(['WALLET', 'CARD', 'QR'])
-  method: 'WALLET' | 'CARD' | 'QR';
+  @IsIn(['WALLET', 'CARD', 'QR', 'VNPAY'])
+  method: 'WALLET' | 'CARD' | 'QR' | 'VNPAY';
 
   // Chỉ dùng để giả lập cổng thanh toán thẻ; không được lưu vào database.
   @ValidateIf((dto: CreatePaymentDto) => dto.method === 'CARD')
