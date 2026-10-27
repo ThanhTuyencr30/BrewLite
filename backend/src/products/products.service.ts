@@ -1,6 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../database/prisma.service';
+
+export type ProductSize = 'S' | 'M' | 'L';
+
+export interface ProductSizePrices {
+  S: number;
+  M: number;
+  L: number;
+}
 
 const productSelect = {
   id: true,
@@ -10,6 +18,7 @@ const productSelect = {
   basePrice: true,
   imageUrl: true,
   stock: true,
+  isAvailable: true,
   category: {
     select: {
       id: true,
@@ -51,6 +60,18 @@ export interface FindProductsQuery {
 export interface ProductSummary extends ProductRecord {
   price: number;
   isOutOfStock: boolean;
+  sizePrices: ProductSizePrices;
+}
+
+export interface ProductDetails {
+  id: number;
+  name: string;
+  category: string;
+  price: number;
+  sizePrices: ProductSizePrices;
+  imageUrl: string;
+  stock: number;
+  isAvailable: boolean;
 }
 
 @Injectable()
@@ -78,10 +99,7 @@ export class ProductsService {
           : {}),
       },
       select: productSelect,
-      orderBy: [
-        { category: { sortOrder: 'asc' } },
-        { name: 'asc' },
-      ],
+      orderBy: [{ category: { sortOrder: 'asc' } }, { name: 'asc' }],
     });
 
     return products
@@ -93,11 +111,48 @@ export class ProductsService {
       );
   }
 
+  async findOne(id: number): Promise<ProductDetails> {
+    const product = await this.prisma.product.findFirst({
+      where: { id, isAvailable: true },
+      select: productSelect,
+    });
+
+    if (!product) {
+      throw new NotFoundException(`Không tìm thấy sản phẩm có mã ${id}.`);
+    }
+
+    return {
+      id: product.id,
+      name: product.name,
+      category: product.category.name,
+      price: product.basePrice,
+      sizePrices: this.toSizePrices(product),
+      imageUrl: product.imageUrl,
+      stock: product.stock,
+      isAvailable: product.isAvailable,
+    };
+  }
+
   private toSummary(product: ProductRecord): ProductSummary {
     return {
       ...product,
       price: product.basePrice,
       isOutOfStock: product.stock <= 0,
+      sizePrices: this.toSizePrices(product),
     };
+  }
+
+  private toSizePrices(product: ProductRecord): ProductSizePrices {
+    const prices: ProductSizePrices = {
+      S: product.basePrice,
+      M: product.basePrice,
+      L: product.basePrice,
+    };
+
+    for (const size of product.sizes) {
+      prices[size.size] = product.basePrice + size.additionalPrice;
+    }
+
+    return prices;
   }
 }

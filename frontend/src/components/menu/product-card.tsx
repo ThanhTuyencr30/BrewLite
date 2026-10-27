@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCart } from "@/components/cart/cart-provider";
 import type { Product } from "@/lib/api.types";
 
@@ -32,6 +33,13 @@ export function ProductCard({ product }: { product: Product }) {
       <div className="figma-product-card__body">
         <h2>{product.name}</h2>
         <strong>{formatPrice(price)}</strong>
+        <Link
+          aria-label={`Xem chi tiết ${product.name}`}
+          className="figma-product-card__detail"
+          href={`/products/${product.id}`}
+        >
+          Xem chi tiết
+        </Link>
         <button
           type="button"
           disabled={product.isOutOfStock}

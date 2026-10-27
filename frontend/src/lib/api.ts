@@ -13,21 +13,48 @@ const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"
 ).replace(/\/$/, "");
 
-async function fetchJson<T>(path: string, signal: AbortSignal): Promise<T> {
+export async function fetchJson<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const headers = new Headers(options.headers);
+  headers.set("Accept", "application/json");
+  if (options.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    signal,
-    headers: { Accept: "application/json" },
+    ...options,
+    headers,
   });
 
   if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
+    let message = `API request failed with status ${response.status}`;
+    if (response.headers.get("content-type")?.includes("application/json")) {
+      const body: unknown = await response.json();
+      if (
+        typeof body === "object" &&
+        body !== null &&
+        "message" in body
+      ) {
+        if (typeof body.message === "string") {
+          message = body.message;
+        } else if (
+          Array.isArray(body.message) &&
+          body.message.every((item): item is string => typeof item === "string")
+        ) {
+          message = body.message.join(", ");
+        }
+      }
+    }
+    throw new Error(message);
   }
 
   return response.json() as Promise<T>;
 }
 
 export function getCategories(signal: AbortSignal) {
-  return fetchJson<Category[]>("/categories", signal);
+  return fetchJson<Category[]>("/categories", { signal });
 }
 
 export function getProducts(
@@ -45,7 +72,9 @@ export function getProducts(
   }
 
   const query = searchParams.toString();
-  return fetchJson<Product[]>(`/products${query ? `?${query}` : ""}`, signal);
+  return fetchJson<Product[]>(`/products${query ? `?${query}` : ""}`, {
+    signal,
+  });
 }
 
 async function postJson<T>(
@@ -85,7 +114,7 @@ async function postJson<T>(
 }
 
 export function getPromotions(signal: AbortSignal) {
-  return fetchJson<Promotion[]>("/promotions/me", signal);
+  return fetchJson<Promotion[]>("/promotions/me", { signal });
 }
 
 export function validatePromotion(code: string, items: CartValidationInputItem[]) {
