@@ -10,5 +10,6 @@ import { PrismaModule } from '../database/prisma.module';
   imports: [PrismaModule, AuthModule],
   controllers: [OrdersController],
   providers: [OrdersService, OrderStateMachine, OrdersScheduler],
+  exports: [OrderStateMachine],
 })
 export class OrdersModule {}

@@ -4,6 +4,7 @@ interface OrderSuccessProps {
   amount: number;
   method: string;
   points: number;
+  totalPoints?: number;
   onTrackOrder: () => void;
   onGoHome: () => void;
 }
@@ -13,6 +14,7 @@ export default function OrderSuccess({
   amount,
   method,
   points,
+  totalPoints,
   onTrackOrder,
   onGoHome,
 }: OrderSuccessProps) {
@@ -64,7 +66,11 @@ export default function OrderSuccess({
         <span className="text-orange-400 text-xl">⭐</span>
         <div>
           <p className="font-bold text-[#4a3b32]">+{points} điểm thưởng</p>
-          <p className="text-xs text-gray-400">Tổng điểm của bạn: 1.250 điểm</p>
+          {totalPoints !== undefined && (
+            <p className="text-xs text-gray-400">
+              Tổng điểm của bạn: {totalPoints.toLocaleString("vi-VN")} điểm
+            </p>
+          )}
         </div>
       </div>
 

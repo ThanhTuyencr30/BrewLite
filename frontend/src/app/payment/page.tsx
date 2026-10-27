@@ -17,6 +17,7 @@ export default async function PaymentPage({
   const orderId = readParam(params.orderId);
   // Số tiền chỉ để hiển thị; backend luôn tính theo tổng tiền của đơn hàng.
   const amount = Number(readParam(params.amount));
+  const orderCode = readParam(params.code);
 
   if (!orderId || !UUID_PATTERN.test(orderId)) {
     return (
@@ -38,6 +39,7 @@ export default async function PaymentPage({
   return (
     <PaymentFlow
       orderId={orderId}
+      orderCode={orderCode}
       amount={Number.isInteger(amount) && amount > 0 ? amount : 0}
     />
   );

@@ -135,6 +135,7 @@ describe('OrdersService.cancelOrder', () => {
     product: { update: jest.fn() },
     payment: { update: jest.fn() },
     promotion: { updateMany: jest.fn() },
+    user: { update: jest.fn(), updateMany: jest.fn() },
   };
   const findUnique = jest.fn();
   const prisma = {
@@ -160,6 +161,32 @@ describe('OrdersService.cancelOrder', () => {
     expect(tx.promotion.updateMany).toHaveBeenCalledWith({
       where: { id: 5, usedCount: { gt: 0 } },
       data: { usedCount: { decrement: 1 } },
+    });
+  });
+
+  it('refunds a paid order and takes back its loyalty points', async () => {
+    findUnique.mockResolvedValue({
+      id: 'order-2',
+      userId: 'user-1',
+      status: 'PAID',
+      version: 1,
+      total: 68000,
+      promotionId: null,
+      items: [],
+      payments: [{ id: 'pay-1', status: 'SUCCEEDED' }],
+    });
+    tx.order.updateMany.mockResolvedValue({ count: 1 });
+    tx.user.updateMany.mockResolvedValue({ count: 1 });
+
+    await service.cancelOrder('order-2', 'user-1');
+
+    expect(tx.payment.update).toHaveBeenCalledWith({
+      where: { id: 'pay-1' },
+      data: { status: 'REFUNDED' },
+    });
+    expect(tx.user.updateMany).toHaveBeenCalledWith({
+      where: { id: 'user-1', loyaltyPoints: { gte: 6 } },
+      data: { loyaltyPoints: { decrement: 6 } },
     });
   });
 });

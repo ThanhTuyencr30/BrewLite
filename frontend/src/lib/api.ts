@@ -89,6 +89,23 @@ async function readErrorMessage(response: Response) {
   return message;
 }
 
+async function getJsonWithAuth<T>(
+  path: string,
+  token: string,
+  signal?: AbortSignal,
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    signal,
+    headers: { Accept: "application/json", ...authHeaders(token) },
+  });
+
+  if (!response.ok) {
+    throw new ApiError(await readErrorMessage(response), response.status);
+  }
+
+  return response.json() as Promise<T>;
+}
+
 async function postJson<T>(
   path: string,
   body: unknown,
@@ -136,10 +153,15 @@ export function submitPayment(
       orderId: payload.orderId,
       method: payload.method === "E_WALLET" ? "WALLET" : payload.method,
       idempotencyKey: crypto.randomUUID(),
+      ...(payload.cardNumber && { cardNumber: payload.cardNumber }),
     },
     signal,
     token,
   );
+}
+
+export function confirmQrPayment(paymentId: string, token: string) {
+  return postJson<PaymentResponse>(`/payments/${paymentId}/confirm`, {}, undefined, token);
 }
 
 export function register(data: RegisterRequest, signal?: AbortSignal) {
@@ -176,4 +198,17 @@ export async function getMe(
 
 export function createOrder(data: CreateOrderRequest, token: string) {
   return postJson<Order>("/orders", data, undefined, token);
+}
+
+export function getOrder(id: string, token: string, signal?: AbortSignal) {
+  return getJsonWithAuth<Order>(`/orders/${id}`, token, signal);
+}
+
+export function cancelOrder(id: string, token: string) {
+  return postJson<{ message: string; orderId: string }>(
+    `/orders/${id}/cancel`,
+    {},
+    undefined,
+    token,
+  );
 }

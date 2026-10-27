@@ -4,33 +4,36 @@ import { useState, useEffect } from "react";
 interface QRPaymentProps {
   amount: number;
   orderId: string;
+  expiresAt: string;
+  isBusy: boolean;
   onBack: () => void;
   onCancel: () => void;
+  onConfirm: () => void;
+  onRegenerate: () => void;
 }
 
 export default function QRPayment({
   amount,
   orderId,
+  expiresAt,
+  isBusy,
   onBack,
   onCancel,
+  onConfirm,
+  onRegenerate,
 }: QRPaymentProps) {
-  const [timeLeft, setTimeLeft] = useState(15 * 60); // Đếm ngược 15 phút
+  // Đếm ngược theo thời điểm hết hạn do server trả về (15 phút).
+  const [now, setNow] = useState(() => Date.now());
+  const timeLeft = Math.max(0, Math.round((new Date(expiresAt).getTime() - now) / 1000));
   const isExpired = timeLeft <= 0;
 
   useEffect(() => {
     if (isExpired) {
       return;
     }
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => prev - 1);
-    }, 1000);
-
+    const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, [timeLeft, isExpired]);
-
-  const handleCreateNewQR = () => {
-    setTimeLeft(15 * 60); // Reset lại 15 phút
-  };
+  }, [isExpired]);
 
   // Format thời gian thành MM:SS
   const minutes = Math.floor(timeLeft / 60)
@@ -84,12 +87,17 @@ export default function QRPayment({
             <p className="text-xs text-gray-500 mb-2">
               Mở ứng dụng ngân hàng hoặc ví điện tử để quét mã QR.
             </p>
-            <p className="text-xs text-gray-500">
-              Hệ thống sẽ tự động kiểm tra trạng thái giao dịch.
-            </p>
-            <div className="mt-4 font-bold text-[#c08d60] bg-[#fcf8e3] px-4 py-2 rounded-full">
+            <div className="mt-4 font-bold text-[#c08d60] bg-[#fcf8e3] px-4 py-2 rounded-full" aria-live="polite">
               Hết hạn sau: {minutes}:{seconds}
             </div>
+            <button
+              onClick={onConfirm}
+              disabled={isBusy}
+              className="mt-4 w-full bg-[#c08d60] text-white py-3 rounded-xl font-bold disabled:opacity-60"
+              type="button"
+            >
+              {isBusy ? "Đang kiểm tra..." : "Tôi đã chuyển khoản"}
+            </button>
           </>
         ) : (
           <>
@@ -102,8 +110,10 @@ export default function QRPayment({
               tạo mã mới để thanh toán.
             </p>
             <button
-              onClick={handleCreateNewQR}
-              className="w-full bg-[#c08d60] text-white py-3 rounded-xl font-bold"
+              onClick={onRegenerate}
+              disabled={isBusy}
+              className="w-full bg-[#c08d60] text-white py-3 rounded-xl font-bold disabled:opacity-60"
+              type="button"
             >
               Tạo mã QR mới
             </button>

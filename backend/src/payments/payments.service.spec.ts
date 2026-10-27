@@ -4,20 +4,34 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { OrderStateMachine } from '../orders/order-state-machine.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
-import { PaymentsService } from './payments.service';
+import { DECLINED_TEST_CARD, PaymentsService, QR_VALIDITY_MS } from './payments.service';
 
 describe('PaymentsService', () => {
   let service: PaymentsService;
+
+  const tx = {
+    payment: {
+      findUniqueOrThrow: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
+    order: { updateMany: jest.fn() },
+    orderStatusHistory: { create: jest.fn() },
+    user: { update: jest.fn() },
+  };
 
   const prisma = {
     payment: {
       findUnique: jest.fn(),
       create: jest.fn(),
+      updateMany: jest.fn(),
     },
     order: {
       findUnique: jest.fn(),
     },
+    $transaction: (callback: (client: typeof tx) => unknown) => callback(tx),
   };
 
   const dto: CreatePaymentDto = {
@@ -42,12 +56,14 @@ describe('PaymentsService', () => {
     method: 'QR',
     status: 'PENDING',
     amount: 35000,
+    createdAt: new Date(),
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
     service = new PaymentsService(
       prisma as unknown as PrismaService,
+      new OrderStateMachine(),
     );
   });
 
@@ -56,7 +72,7 @@ describe('PaymentsService', () => {
     prisma.order.findUnique.mockResolvedValue(order);
     prisma.payment.create.mockResolvedValue(payment);
 
-    await expect(service.create(userId, dto)).resolves.toEqual(payment);
+    await expect(service.create(userId, dto)).resolves.toMatchObject(payment);
 
     expect(prisma.payment.create).toHaveBeenCalledWith({
       data: {
@@ -73,7 +89,7 @@ describe('PaymentsService', () => {
     prisma.order.findUnique.mockResolvedValue(order);
     prisma.payment.findUnique.mockResolvedValue(payment);
 
-    await expect(service.create(userId, dto)).resolves.toEqual(payment);
+    await expect(service.create(userId, dto)).resolves.toMatchObject(payment);
 
     expect(prisma.payment.create).not.toHaveBeenCalled();
   });
@@ -147,7 +163,7 @@ describe('PaymentsService', () => {
     prisma.order.findUnique.mockResolvedValue(order);
     prisma.payment.create.mockRejectedValue({ code: 'P2002' });
 
-    await expect(service.create(userId, dto)).resolves.toEqual(payment);
+    await expect(service.create(userId, dto)).resolves.toMatchObject(payment);
   });
 
   it('rejects a concurrent request if the key belongs to a different request', async () => {
@@ -161,5 +177,97 @@ describe('PaymentsService', () => {
     await expect(
       service.create(userId, { ...dto, method: 'CARD' }),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  describe('simulated gateway', () => {
+    const userIdOrder = { ...order, version: 0, userId };
+
+    beforeEach(() => {
+      prisma.order.findUnique.mockResolvedValue(userIdOrder);
+      prisma.payment.findUnique.mockResolvedValue(null);
+      prisma.payment.create.mockImplementation(({ data }: { data: object }) => ({
+        ...payment,
+        ...data,
+      }));
+      tx.order.updateMany.mockResolvedValue({ count: 1 });
+      tx.payment.updateMany.mockResolvedValue({ count: 1 });
+    });
+
+    it('marks wallet payments as paid and awards loyalty points', async () => {
+      tx.payment.findUniqueOrThrow
+        .mockResolvedValueOnce({ ...payment, method: 'WALLET', order: userIdOrder })
+        .mockResolvedValueOnce({ ...payment, method: 'WALLET', status: 'SUCCEEDED' });
+
+      const result = await service.create(userId, { ...dto, method: 'WALLET' });
+
+      expect(result).toMatchObject({ status: 'SUCCEEDED', rewardPoints: 3 });
+      expect(tx.order.updateMany).toHaveBeenCalledWith({
+        where: { id: order.id, version: 0 },
+        data: { status: 'PAID', version: { increment: 1 } },
+      });
+      expect(tx.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { loyaltyPoints: { increment: 3 } },
+      });
+    });
+
+    it('moves a previously failed order back through PENDING before PAID', async () => {
+      const failedOrder = { ...userIdOrder, status: 'PAYMENT_FAILED' };
+      prisma.order.findUnique.mockResolvedValue(failedOrder);
+      tx.payment.findUniqueOrThrow
+        .mockResolvedValueOnce({ ...payment, method: 'WALLET', order: failedOrder })
+        .mockResolvedValueOnce({ ...payment, method: 'WALLET', status: 'SUCCEEDED' });
+
+      await service.create(userId, { ...dto, method: 'WALLET' });
+
+      expect(tx.orderStatusHistory.create).toHaveBeenCalledTimes(2);
+    });
+
+    it('declines the test card and marks the order as payment failed', async () => {
+      tx.payment.update.mockResolvedValue({
+        ...payment,
+        method: 'CARD',
+        status: 'FAILED',
+        failureReason: 'Thẻ bị ngân hàng từ chối.',
+        order: userIdOrder,
+      });
+
+      const result = await service.create(userId, {
+        ...dto,
+        method: 'CARD',
+        cardNumber: DECLINED_TEST_CARD,
+      });
+
+      expect(result).toMatchObject({ status: 'FAILED', rewardPoints: 0 });
+      expect(result).not.toHaveProperty('order');
+      expect(tx.order.updateMany).toHaveBeenCalledWith({
+        where: { id: order.id, version: 0 },
+        data: { status: 'PAYMENT_FAILED', version: { increment: 1 } },
+      });
+    });
+
+    it('keeps QR payments pending with a 15 minute expiry', async () => {
+      const result = await service.create(userId, dto);
+
+      expect(result.status).toBe('PENDING');
+      expect(result.qrExpiresAt?.getTime()).toBe(payment.createdAt.getTime() + QR_VALIDITY_MS);
+      expect(tx.order.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('rejects confirming an expired QR code', async () => {
+      prisma.payment.findUnique.mockResolvedValue({
+        ...payment,
+        createdAt: new Date(Date.now() - QR_VALIDITY_MS - 1000),
+        order: userIdOrder,
+      });
+
+      await expect(service.confirmQr(userId, payment.id)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(prisma.payment.updateMany).toHaveBeenCalledWith({
+        where: { id: payment.id, status: 'PENDING' },
+        data: { status: 'FAILED', failureReason: 'Mã QR đã hết hạn.' },
+      });
+    });
   });
 });

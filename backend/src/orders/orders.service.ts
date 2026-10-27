@@ -8,6 +8,7 @@ import {
   PaymentStatus,
   SizeCode,
 } from '../generated/prisma/client';
+import { loyaltyPointsFor } from '../users/loyalty-points';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderStateMachine } from './order-state-machine.service';
 
@@ -114,8 +115,18 @@ export class OrdersService {
       if (paidPayment) {
         await tx.payment.update({
           where: { id: paidPayment.id },
-          data: { status: PaymentStatus.REFUNDED } // <-- Và sửa ở đây (Nếu Enum của bạn có REFUNDED)
+          data: { status: PaymentStatus.REFUNDED }
         });
+
+        // Trừ lại điểm thưởng đã cộng khi thanh toán (không để âm).
+        const points = loyaltyPointsFor(order.total);
+        const deducted = await tx.user.updateMany({
+          where: { id: order.userId, loyaltyPoints: { gte: points } },
+          data: { loyaltyPoints: { decrement: points } },
+        });
+        if (deducted.count === 0) {
+          await tx.user.update({ where: { id: order.userId }, data: { loyaltyPoints: 0 } });
+        }
       }
 
       // 3.5. Trả lại lượt dùng mã giảm giá (Nếu có)

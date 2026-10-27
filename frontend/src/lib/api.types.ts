@@ -93,6 +93,7 @@ export type ScreenState =
 export interface PaymentRequest {
   orderId: string;
   method: PaymentMethod;
+  cardNumber?: string;
 }
 
 // Bản ghi thanh toán backend trả về
@@ -103,6 +104,8 @@ export interface PaymentResponse {
   status: "PENDING" | "SUCCEEDED" | "FAILED" | "REFUNDED";
   amount: number;
   failureReason: string | null;
+  rewardPoints: number;
+  qrExpiresAt: string | null;
 }
 
 export interface RegisterRequest {
