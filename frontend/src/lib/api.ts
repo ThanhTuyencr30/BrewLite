@@ -6,6 +6,7 @@ import type {
   LoginRequest,
   LoginResponse,
   Order,
+  PaymentDetails,
   PaymentRequest,
   PaymentResponse,
   Product,
@@ -221,4 +222,8 @@ export function cancelOrder(id: string, token: string) {
     undefined,
     token,
   );
+}
+
+export function getPayment(id: string, token: string, signal?: AbortSignal) {
+  return getJsonWithAuth<PaymentDetails>(`/payments/${id}`, token, signal);
 }

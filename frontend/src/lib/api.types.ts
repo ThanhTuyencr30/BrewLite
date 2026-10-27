@@ -78,7 +78,7 @@ export interface CartValidationResult {
 // --- PHẦN DỮ LIỆU THANH TOÁN (Bổ sung cho Task 8 & 10) ---
 
 // Các phương thức thanh toán hỗ trợ
-export type PaymentMethod = "E_WALLET" | "CARD" | "QR";
+export type PaymentMethod = "E_WALLET" | "CARD" | "QR" | "VNPAY";
 
 // Quản lý trạng thái luồng UI thay cho Router
 export type ScreenState =
@@ -100,12 +100,18 @@ export interface PaymentRequest {
 export interface PaymentResponse {
   id: string;
   orderId: string;
-  method: "WALLET" | "CARD" | "QR";
+  method: "WALLET" | "CARD" | "QR" | "VNPAY";
   status: "PENDING" | "SUCCEEDED" | "FAILED" | "REFUNDED";
   amount: number;
   failureReason: string | null;
   rewardPoints: number;
   qrExpiresAt: string | null;
+  // Có khi thanh toán qua VNPay: địa chỉ cổng VNPay để chuyển khách sang.
+  paymentUrl: string | null;
+}
+
+export interface PaymentDetails extends PaymentResponse {
+  orderCode: string;
 }
 
 export interface RegisterRequest {

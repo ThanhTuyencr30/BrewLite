@@ -15,6 +15,7 @@ const METHOD_LABELS: Record<PaymentMethod, string> = {
   E_WALLET: "Ví điện tử",
   CARD: "Thẻ ngân hàng",
   QR: "Chuyển khoản QR",
+  VNPAY: "VNPay",
 };
 
 interface PaymentFlowProps {
@@ -43,6 +44,13 @@ export default function PaymentFlow({ orderId, orderCode, amount }: PaymentFlowP
 
   const showResult = (payment: PaymentResponse) => {
     setPaidAmount(payment.amount);
+
+    // VNPay: chuyển trình duyệt sang cổng VNPay; kết quả do VNPay xác nhận
+    // và được đưa về trang /payment/result.
+    if (payment.paymentUrl) {
+      window.location.assign(payment.paymentUrl);
+      return;
+    }
 
     if (payment.status === "SUCCEEDED") {
       setRewardPoints(payment.rewardPoints);
@@ -144,7 +152,7 @@ export default function PaymentFlow({ orderId, orderCode, amount }: PaymentFlowP
               onSelect={(selected) => {
                 setMethod(selected);
                 if (selected === "CARD") setScreen("CARD_FORM");
-                if (selected === "QR") void handleProcessPayment(selected);
+                if (selected === "QR" || selected === "VNPAY") void handleProcessPayment(selected);
                 if (selected === "E_WALLET") void handleProcessPayment(selected);
               }}
             />
