@@ -190,6 +190,8 @@ model Order {
   statusHistory OrderStatusHistory[]
   createdAt     DateTime             @default(now()) @db.Timestamptz(3)
   updatedAt     DateTime             @updatedAt @db.Timestamptz(3)
+  cancelledAt   DateTime?            @db.Timestamptz(3)
+  cancelReason  String?
 
   @@index([userId, createdAt])
   @@index([status, expiresAt])

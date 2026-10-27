@@ -1,18 +1,37 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useCart } from "@/components/cart/cart-provider";
 import { ConnectionError } from "@/components/common/connection-error";
 import { ApiError, getCategories, getMe, getProducts } from "@/lib/api";
 import type { Category, Product, User } from "@/lib/api.types";
 import { MenuSkeleton } from "./menu-skeleton";
 import { ProductCard } from "./product-card";
 
-const SEARCH_DELAY_MS = 350;
+function AccountIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="7" r="4" />
+      <path d="M4.5 21c.6-5 3-7.5 7.5-7.5s6.9 2.5 7.5 7.5" />
+    </svg>
+  );
+}
+
+function CartIcon() {
+  return (
+    <svg viewBox="0 0 28 24" aria-hidden="true">
+      <path d="M2 2h3l2.2 12.2h14.4l2.2-8.7H6" />
+      <circle cx="10" cy="20" r="1.5" />
+      <circle cx="21" cy="20" r="1.5" />
+    </svg>
+  );
+}
 
 export function MenuPage() {
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const { itemCount } = useCart();
+  const [activeCategory, setActiveCategory] = useState("ca-phe");
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,15 +69,6 @@ export function MenuPage() {
   }, []);
 
   useEffect(() => {
-    const timeout = window.setTimeout(
-      () => setSearch(searchInput.trim()),
-      SEARCH_DELAY_MS,
-    );
-
-    return () => window.clearTimeout(timeout);
-  }, [searchInput]);
-
-  useEffect(() => {
     const controller = new AbortController();
 
     async function loadMenu() {
@@ -68,10 +78,7 @@ export function MenuPage() {
       try {
         const [nextCategories, nextProducts] = await Promise.all([
           getCategories(controller.signal),
-          getProducts(
-            { search, category: selectedCategory },
-            controller.signal,
-          ),
+          getProducts({ search: "", category: "all" }, controller.signal),
         ]);
 
         setCategories(nextCategories);
@@ -91,39 +98,33 @@ export function MenuPage() {
 
     void loadMenu();
     return () => controller.abort();
-  }, [retryCount, search, selectedCategory]);
+  }, [retryCount]);
 
-  const hasFilters = search.length > 0 || selectedCategory !== "all";
+  if (isLoading) {
+    return <MenuSkeleton />;
+  }
+
+  if (hasError) {
+    return (
+      <ConnectionError
+        onRetry={() => setRetryCount((count) => count + 1)}
+        onHome={() => setActiveCategory("ca-phe")}
+      />
+    );
+  }
 
   return (
-    <div className="site-shell">
-      <header className="site-header">
-        <a className="brand" href="#top" aria-label="Colden Coffee - về đầu trang">
-          <span className="brand__mark" aria-hidden="true">
-            <svg viewBox="0 0 40 40">
-              <path d="M11 12h18v10a9 9 0 0 1-9 9 9 9 0 0 1-9-9V12Z" />
-              <path d="M29 15h2a5 5 0 0 1 0 10h-3M15 7c0 2 2 2 2 4M22 7c0 2 2 2 2 4" />
-            </svg>
-          </span>
-          <span>COLDEN COFFEE</span>
-        </a>
-        <nav aria-label="Điều hướng chính">
-          <a className="nav-link nav-link--active" href="#menu">
-            Thực đơn
+    <main className="coffee-app">
+      <header className="coffee-header">
+        <div>
+          <a className="coffee-brand" href="#menu" aria-label="BrewLite - về đầu trang">
+            BREWLITE
           </a>
-          <a className="nav-link" href="#about">
-              Về Colden Coffee
-          </a>
-        </nav>
-        <div className="header-note">
-          <span className="header-note__hours">Mở cửa 07:00–22:00</span>
-          <a
-            className="header-account-link"
-            href={
-              accountUser || accountLoadFailed
-                ? "/profile"
-                : "/login"
-            }
+          <p>Cà phê ngon, bắt đầu ngày mới</p>
+        </div>
+
+        <div className="coffee-header__actions">
+          <Link
             aria-label={
               accountUser
                 ? `Tài khoản của ${accountUser.fullName || accountUser.email}`
@@ -131,147 +132,95 @@ export function MenuPage() {
                   ? "Không tải được tài khoản. Chạm để thử lại."
                   : "Đăng nhập tài khoản"
             }
+            className="account-button"
+            href={accountUser || accountLoadFailed ? "/profile" : "/login"}
           >
-            <span className="header-account-link__label">
-              {accountLoadFailed
-                ? "Thử lại"
-                : accountUser
-                  ? accountUser.fullName?.split(" ")[0] || "Tài khoản"
-                  : "Đăng nhập"}
-            </span>
-            <span aria-hidden="true">→</span>
-          </a>
+            <AccountIcon />
+          </Link>
+          <Link
+            aria-label={`Giỏ hàng có ${itemCount} món`}
+            className="cart-button"
+            href="/cart"
+          >
+            <CartIcon />
+            {itemCount > 0 && <span>{itemCount > 99 ? "99+" : itemCount}</span>}
+          </Link>
         </div>
       </header>
 
-      <main id="top">
-        <section className="hero" aria-labelledby="hero-title">
-          <div className="hero__content">
-            <p className="eyebrow">Cà phê ngon, bắt đầu ngày mới</p>
-            <h1 id="hero-title">
-              Một ngụm <em>thảnh thơi</em>,<br /> một ngày đầy cảm hứng.
-            </h1>
-            <p className="hero__description">
-              Chọn món bạn thích, Colden Coffee chuẩn bị thật nhanh. Không xếp
-              hàng, không cần tiền mặt.
-            </p>
-            <a className="primary-button" href="#menu">
-              Khám phá thực đơn
-              <span aria-hidden="true">↓</span>
-            </a>
-          </div>
-          <div className="hero__visual" aria-hidden="true">
-            <span className="hero__sun" />
-            <div className="hero__cup">
-              <span className="hero__steam hero__steam--one" />
-              <span className="hero__steam hero__steam--two" />
-              <span className="hero__coffee" />
-              <span className="hero__handle" />
-            </div>
-            <div className="hero__badge">
-              <strong>30+</strong>
-              <span>món để chọn</span>
-            </div>
-          </div>
-        </section>
+      <section className="figma-menu" id="menu" aria-labelledby="menu-title">
+          <Image
+            className="coffee-mark"
+            src="/products/coffee-mark.png"
+            alt=""
+            width={78}
+            height={72}
+            priority
+          />
+          <h1 id="menu-title">Menu hôm nay</h1>
 
-        <section className="menu-section" id="menu" aria-labelledby="menu-title">
-          <div className="menu-heading">
-            <div>
-              <p className="eyebrow">Chọn món hôm nay</p>
-              <h2 id="menu-title">Menu hôm nay</h2>
-            </div>
-            <label className="search-box">
-              <span className="sr-only">Tìm kiếm món</span>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="11" cy="11" r="7" />
-                <path d="m16 16 5 5" />
-              </svg>
-              <input
-                type="search"
-                value={searchInput}
-                onChange={(event) => setSearchInput(event.target.value)}
-                placeholder="Bạn muốn uống gì?"
-              />
-            </label>
-          </div>
-
-          {!hasError && categories.length > 0 && (
-            <div className="category-list" aria-label="Lọc theo danh mục">
-              <button
-                className={selectedCategory === "all" ? "is-active" : ""}
-                type="button"
-                onClick={() => setSelectedCategory("all")}
-              >
-                Tất cả
-              </button>
-              {categories.map((category) => (
-                <button
-                  className={
-                    selectedCategory === category.slug ? "is-active" : ""
-                  }
-                  type="button"
-                  onClick={() => setSelectedCategory(category.slug)}
-                  key={category.id}
-                >
-                  {category.name}
-                  <span>{category.productCount}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {isLoading ? (
-            <MenuSkeleton />
-          ) : hasError ? (
-            <ConnectionError onRetry={() => setRetryCount((count) => count + 1)} />
-          ) : products.length === 0 ? (
-            <section className="empty-state" aria-live="polite">
-              <span className="empty-state__icon" aria-hidden="true">☕</span>
-              <h3>{hasFilters ? "Không tìm thấy món phù hợp" : "Menu đang được cập nhật"}</h3>
-              <p>
-                {hasFilters
-                  ? "Thử một từ khóa khác hoặc chọn lại danh mục nhé."
-                  : "Quay lại sau một chút để khám phá các món mới."}
-              </p>
-              {hasFilters && (
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => {
-                    setSearchInput("");
-                    setSearch("");
-                    setSelectedCategory("all");
-                  }}
-                >
-                  Xóa bộ lọc
-                </button>
-              )}
-            </section>
-          ) : (
-            <div className="menu-content" aria-live="polite">
-              <p className="result-count">
-                <strong>{products.length}</strong> món đang chờ bạn
-              </p>
-              <div className="product-grid">
-                {products.map((product) => (
-                  <ProductCard product={product} key={product.id} />
+          <div className="figma-menu__body">
+            {!hasError && categories.length > 0 && (
+              <nav className="vertical-categories" aria-label="Đi đến danh mục">
+                {categories.map((category) => (
+                  <button
+                    className={activeCategory === category.slug ? "is-active" : ""}
+                    type="button"
+                    aria-current={activeCategory === category.slug ? "true" : undefined}
+                    onClick={() => {
+                      setActiveCategory(category.slug);
+                      document
+                        .getElementById(`category-${category.slug}`)
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    key={category.id}
+                  >
+                    {category.name}
+                  </button>
                 ))}
-              </div>
+              </nav>
+            )}
+
+            <div className="figma-menu__content">
+              {products.length === 0 ? (
+                <section className="figma-empty-state" aria-live="polite">
+                  <h2>Menu đang được cập nhật</h2>
+                  <p>Quay lại sau một chút để khám phá các món mới.</p>
+                </section>
+              ) : (
+                <div className="category-sections" aria-live="polite">
+                  {categories.map((category) => {
+                    const categoryProducts = products.filter(
+                      (product) => product.category.slug === category.slug,
+                    );
+
+                    if (categoryProducts.length === 0) {
+                      return null;
+                    }
+
+                    return (
+                      <section
+                        className="category-section"
+                        id={`category-${category.slug}`}
+                        aria-labelledby={`category-title-${category.slug}`}
+                        key={category.id}
+                      >
+                        <h2 className="sr-only" id={`category-title-${category.slug}`}>
+                          {category.name}
+                        </h2>
+                        <div className="product-grid">
+                          {categoryProducts.map((product) => (
+                            <ProductCard product={product} key={product.id} />
+                          ))}
+                        </div>
+                      </section>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          )}
-        </section>
-
-        <section className="about-strip" id="about">
-          <p>Đặt trước · Thanh toán gọn · Nhận món nhanh</p>
-          <strong>Colden Coffee — nhẹ nhàng trong từng lựa chọn.</strong>
-        </section>
-      </main>
-
-      <footer>
-        <a className="brand brand--footer" href="#top">COLDEN COFFEE</a>
-        <p>© 2026 Colden Coffee. Được pha bằng sự tử tế.</p>
-      </footer>
-    </div>
+          </div>
+      </section>
+    </main>
   );
 }
