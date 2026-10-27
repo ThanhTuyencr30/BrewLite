@@ -26,8 +26,12 @@ describe('PaymentsService', () => {
     method: 'QR',
   };
 
+  const userId = '5b0f5d0e-3a43-4a8e-9a55-1d6f7e1c2b3a';
+
   const order = {
     id: dto.orderId,
+    userId,
+    status: 'PENDING',
     total: 35000,
   };
 
@@ -52,7 +56,7 @@ describe('PaymentsService', () => {
     prisma.order.findUnique.mockResolvedValue(order);
     prisma.payment.create.mockResolvedValue(payment);
 
-    await expect(service.create(dto)).resolves.toEqual(payment);
+    await expect(service.create(userId, dto)).resolves.toEqual(payment);
 
     expect(prisma.payment.create).toHaveBeenCalledWith({
       data: {
@@ -66,29 +70,56 @@ describe('PaymentsService', () => {
   });
 
   it('returns the existing payment for the same request', async () => {
+    prisma.order.findUnique.mockResolvedValue(order);
     prisma.payment.findUnique.mockResolvedValue(payment);
 
-    await expect(service.create(dto)).resolves.toEqual(payment);
+    await expect(service.create(userId, dto)).resolves.toEqual(payment);
 
     expect(prisma.payment.create).not.toHaveBeenCalled();
-    expect(prisma.order.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("hides orders that belong to another user", async () => {
+    prisma.order.findUnique.mockResolvedValue({ ...order, userId: 'other-user' });
+
+    await expect(service.create(userId, dto)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+
+    expect(prisma.payment.findUnique).not.toHaveBeenCalled();
+    expect(prisma.payment.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects payment for an order that is no longer awaiting payment', async () => {
+    prisma.order.findUnique.mockResolvedValue({ ...order, status: 'CANCELLED' });
+    prisma.payment.findUnique.mockResolvedValue(null);
+
+    await expect(service.create(userId, dto)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+
+    expect(prisma.payment.create).not.toHaveBeenCalled();
   });
 
   it('rejects reuse of a key with a different method', async () => {
+    prisma.order.findUnique.mockResolvedValue(order);
     prisma.payment.findUnique.mockResolvedValue(payment);
 
     await expect(
-      service.create({ ...dto, method: 'CARD' }),
+      service.create(userId, { ...dto, method: 'CARD' }),
     ).rejects.toBeInstanceOf(ConflictException);
 
     expect(prisma.payment.create).not.toHaveBeenCalled();
   });
 
   it('rejects reuse of a key with a different order', async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      ...order,
+      id: '00000000-0000-4000-8000-000000000099',
+    });
     prisma.payment.findUnique.mockResolvedValue(payment);
 
     await expect(
-      service.create({
+      service.create(userId, {
         ...dto,
         orderId: '00000000-0000-4000-8000-000000000099',
       }),
@@ -101,7 +132,7 @@ describe('PaymentsService', () => {
     prisma.payment.findUnique.mockResolvedValue(null);
     prisma.order.findUnique.mockResolvedValue(null);
 
-    await expect(service.create(dto)).rejects.toBeInstanceOf(
+    await expect(service.create(userId, dto)).rejects.toBeInstanceOf(
       NotFoundException,
     );
 
@@ -116,7 +147,7 @@ describe('PaymentsService', () => {
     prisma.order.findUnique.mockResolvedValue(order);
     prisma.payment.create.mockRejectedValue({ code: 'P2002' });
 
-    await expect(service.create(dto)).resolves.toEqual(payment);
+    await expect(service.create(userId, dto)).resolves.toEqual(payment);
   });
 
   it('rejects a concurrent request if the key belongs to a different request', async () => {
@@ -128,7 +159,7 @@ describe('PaymentsService', () => {
     prisma.payment.create.mockRejectedValue({ code: 'P2002' });
 
     await expect(
-      service.create({ ...dto, method: 'CARD' }),
+      service.create(userId, { ...dto, method: 'CARD' }),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 });
