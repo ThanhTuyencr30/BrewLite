@@ -101,7 +101,10 @@ hàng. Seed tạo `GIAM15` (giảm 15%, đơn từ 50.000đ), `GIAM20` (giảm 2
    và thời gian còn lại để thanh toán.
 3. Đơn chưa thanh toán sau 15 phút bị tự động hủy (scheduler chạy mỗi phút):
    hoàn kho, trả lượt mã giảm giá và hiện màn **Đơn đã tự động hủy**.
-4. Thanh toán được giả lập ngay trong backend:
+4. **VNPay (khuyên dùng)**: khách được chuyển sang cổng VNPay, nhập thẻ hoặc quét
+   QR ở đó, rồi VNPay báo kết quả về backend. Kết quả do VNPay xác nhận, ứng dụng
+   không tự quyết định (xem mục *Thanh toán qua VNPay*). Các cách còn lại bên
+   dưới chỉ là giả lập ngay trong backend:
    - **Ví điện tử**: thành công ngay.
    - **Thẻ**: số thẻ phải đủ 16 chữ số. Thẻ thử nghiệm `4000 0000 0000 0002`
      luôn bị từ chối để demo màn thanh toán thất bại; các số khác thành công.
@@ -121,12 +124,63 @@ POST /orders                 # tạo đơn: { items: [{ productId, size, quantit
 GET  /orders/me              # đơn của tôi, lọc bằng ?status=PENDING|PAID|...
 GET  /orders/:id             # chi tiết đơn kèm lịch sử trạng thái
 POST /orders/:id/cancel      # hủy đơn: hoàn kho, hoàn tiền, trừ điểm, trả mã giảm giá
-POST /payments               # { orderId, method: WALLET|CARD|QR, idempotencyKey, cardNumber? }
+POST /payments               # { orderId, method: VNPAY|WALLET|CARD|QR, idempotencyKey, cardNumber? }
+GET  /payments/:id           # kết quả một thanh toán (chỉ chủ đơn xem được)
 POST /payments/:id/confirm   # giả lập xác nhận chuyển khoản QR
+GET  /payments/vnpay/return  # VNPay đưa trình duyệt của khách về (xác minh chữ ký)
+GET  /payments/vnpay/ipn     # VNPay gọi server-to-server (xác minh chữ ký)
 ```
 
 Gửi lại `POST /payments` với cùng `idempotencyKey` chỉ trả về thanh toán đã
 tạo, không tạo thanh toán mới.
+
+## Thanh toán qua VNPay
+
+Với `method: VNPAY`, backend tạo thanh toán chờ xử lý và trả về `paymentUrl` đã ký
+(HMAC-SHA512) để chuyển khách sang cổng VNPay. Đơn chỉ chuyển sang `PAID` hoặc
+`PAYMENT_FAILED` khi VNPay gửi kết quả về `/payments/vnpay/return` (trình duyệt
+của khách) hoặc `/payments/vnpay/ipn` (máy chủ VNPay). Backend luôn kiểm tra chữ
+ký, đối chiếu số tiền với database và xử lý idempotent nên hai đường gửi trùng
+nhau không cộng điểm hai lần.
+
+### Cấu hình
+1. Đăng ký merchant môi trường test tại https://sandbox.vnpayment.vn/devreg/ để
+   nhận `TmnCode` và `HashSecret` qua email.
+2. Sao chép `.env.example` thành `.env` ở thư mục gốc (dùng cho Docker) và
+   `backend/.env.example` thành `backend/.env` (chạy không dùng Docker), rồi điền:
+
+```env
+VNPAY_TMN_CODE=<TmnCode nhận qua email>
+VNPAY_HASH_SECRET=<HashSecret nhận qua email>
+VNPAY_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+VNPAY_RETURN_URL=http://localhost:3001/payments/vnpay/return
+```
+
+`HashSecret` là khóa bí mật: chỉ để trong `.env` (đã nằm trong `.gitignore`),
+không commit và không gửi vào nơi công khai. Thiếu cấu hình thì chọn VNPay sẽ báo
+"Cổng thanh toán VNPay chưa được cấu hình". Sau khi đổi `.env`, chạy lại
+`docker compose up --build`.
+
+### Thẻ thử nghiệm của VNPay
+Trên trang VNPay chọn thanh toán bằng thẻ nội địa, ngân hàng **NCB**, rồi nhập:
+
+| Trường | Giá trị |
+|---|---|
+| Số thẻ | `9704198526191432198` |
+| Tên chủ thẻ | `NGUYEN VAN A` |
+| Ngày phát hành | `07/15` |
+| Mật khẩu OTP | `123456` |
+
+Bấm **Hủy** trên trang VNPay để demo giao dịch thất bại.
+
+### IPN
+- Return URL chạy được ngay trên máy local, nên demo không cần IPN.
+- Để VNPay gọi IPN thật, backend cần địa chỉ công khai (ví dụ dùng ngrok:
+  `ngrok http 3001`). Gửi địa chỉ `https://<tên-miền-công-khai>/payments/vnpay/ipn`
+  cho VNPay trong trang quản trị merchant (https://sandbox.vnpayment.vn/merchantv2/).
+- Nếu đơn đã bị hủy (quá 15 phút) trong lúc khách thanh toán xong ở VNPay,
+  thanh toán được ghi nhận `FAILED` kèm lý do và cần hoàn tiền thủ công từ
+  trang quản trị VNPay; ứng dụng chưa gọi API hoàn tiền của VNPay.
 
 ## Kiểm tra
 
