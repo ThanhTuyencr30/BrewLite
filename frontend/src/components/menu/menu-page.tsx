@@ -7,6 +7,7 @@ import { useCart } from "@/components/cart/cart-provider";
 import { ConnectionError } from "@/components/common/connection-error";
 import { ApiError, getCategories, getMe, getProducts } from "@/lib/api";
 import type { Category, Product, User } from "@/lib/api.types";
+import { clearAccessToken, getAccessToken } from "@/lib/auth-token";
 import { MenuSkeleton } from "./menu-skeleton";
 import { ProductCard } from "./product-card";
 
@@ -41,7 +42,7 @@ export function MenuPage() {
   const [accountLoadFailed, setAccountLoadFailed] = useState(false);
 
   useEffect(() => {
-    const token = window.localStorage.getItem("accessToken");
+    const token = getAccessToken();
     if (token === null) {
       return;
     }
@@ -56,7 +57,7 @@ export function MenuPage() {
         }
 
         if (error instanceof ApiError && error.status === 401) {
-          window.localStorage.removeItem("accessToken");
+          clearAccessToken();
           return;
         }
 

@@ -4,11 +4,11 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ApiError, login } from "@/lib/api";
+import { setAccessToken } from "@/lib/auth-token";
 import { AuthResultDialog, type DialogTone } from "./auth-result-dialog";
 import { AuthShell } from "./auth-shell";
 import styles from "./auth.module.css";
 
-const ACCESS_TOKEN_KEY = "accessToken";
 
 interface DialogState {
   tone: DialogTone;
@@ -32,7 +32,7 @@ export function LoginForm() {
 
     try {
       const result = await login({ email: email.trim(), password });
-      window.localStorage.setItem(ACCESS_TOKEN_KEY, result.accessToken);
+      setAccessToken(result.accessToken);
       const requestedDestination = new URLSearchParams(
         window.location.search,
       ).get("next");

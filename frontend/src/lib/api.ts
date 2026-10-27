@@ -2,8 +2,10 @@ import type {
   CartValidationResult,
   CartValidationInputItem,
   Category,
+  CreateOrderRequest,
   LoginRequest,
   LoginResponse,
+  Order,
   PaymentRequest,
   PaymentResponse,
   Product,
@@ -65,10 +67,33 @@ export function getProducts(
   return fetchJson<Product[]>(`/products${query ? `?${query}` : ""}`, signal);
 }
 
+function authHeaders(token?: string): Record<string, string> {
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function readErrorMessage(response: Response) {
+  const responseBody: unknown = await response.json().catch(() => null);
+  let message = `API request failed with status ${response.status}`;
+  if (responseBody && typeof responseBody === "object" && "message" in responseBody) {
+    if (typeof responseBody.message === "string") {
+      message = responseBody.message;
+    } else if (Array.isArray(responseBody.message)) {
+      const details = responseBody.message.filter(
+        (part): part is string => typeof part === "string",
+      );
+      if (details.length > 0) {
+        message = details.join(" ");
+      }
+    }
+  }
+  return message;
+}
+
 async function postJson<T>(
   path: string,
   body: unknown,
   signal?: AbortSignal,
+  token?: string,
 ): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
@@ -76,26 +101,13 @@ async function postJson<T>(
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
+      ...authHeaders(token),
     },
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
-    const responseBody: unknown = await response.json().catch(() => null);
-    let message = `API request failed with status ${response.status}`;
-    if (responseBody && typeof responseBody === "object" && "message" in responseBody) {
-      if (typeof responseBody.message === "string") {
-        message = responseBody.message;
-      } else if (Array.isArray(responseBody.message)) {
-        const details = responseBody.message.filter(
-          (part): part is string => typeof part === "string",
-        );
-        if (details.length > 0) {
-          message = details.join(" ");
-        }
-      }
-    }
-    throw new ApiError(message, response.status);
+    throw new ApiError(await readErrorMessage(response), response.status);
   }
 
   return response.json() as Promise<T>;
@@ -115,6 +127,7 @@ export function validateCart(items: CartValidationInputItem[]) {
 
 export function submitPayment(
   payload: PaymentRequest,
+  token: string,
   signal?: AbortSignal
 ): Promise<PaymentResponse> {
   return postJson<PaymentResponse>(
@@ -125,6 +138,7 @@ export function submitPayment(
       idempotencyKey: crypto.randomUUID(),
     },
     signal,
+    token,
   );
 }
 
@@ -158,4 +172,8 @@ export async function getMe(
   }
 
   return response.json() as Promise<User>;
+}
+
+export function createOrder(data: CreateOrderRequest, token: string) {
+  return postJson<Order>("/orders", data, undefined, token);
 }
