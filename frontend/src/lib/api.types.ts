@@ -143,7 +143,13 @@ export type OrderStatus =
   | "PAYMENT_FAILED";
 
 export interface CreateOrderRequest {
-  items: { productId: number; size: ProductSize["size"]; quantity: number }[];
+  items: {
+    productId: number;
+    size: ProductSize["size"];
+    iceLevel: "NORMAL" | "LESS" | "NONE";
+    quantity: number;
+    toppingIds: number[];
+  }[];
   discountCode?: string;
 }
 

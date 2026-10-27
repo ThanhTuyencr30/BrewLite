@@ -43,7 +43,15 @@ export function CartPage() {
     [items],
   );
   const subtotal = useMemo(
-    () => items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0),
+    () =>
+      items.reduce(
+        (sum, item) =>
+          sum +
+          (item.unitPrice +
+            item.toppings.reduce((toppingSum, topping) => toppingSum + topping.price, 0)) *
+            item.quantity,
+        0,
+      ),
     [items],
   );
   const discount = appliedPromotion?.discount ?? 0;
@@ -96,7 +104,9 @@ export function CartPage() {
           items: items.map((item) => ({
             productId: item.productId,
             size: item.size,
+            iceLevel: item.iceLevel,
             quantity: item.quantity,
+            toppingIds: item.toppings.map((topping) => topping.id),
           })),
           discountCode: appliedPromotion?.promotion.code,
         },
@@ -211,7 +221,19 @@ export function CartPage() {
                     <div className="cart-item__name">
                       <h2>{item.name}</h2>
                       <p>Size {item.size}</p>
-                      <p>Không topping</p>
+                      <p>
+                        {item.toppings.length > 0
+                          ? item.toppings.map((topping) => topping.name).join(", ")
+                          : "Không topping"}
+                      </p>
+                      <p>
+                        Đá:{" "}
+                        {item.iceLevel === "LESS"
+                          ? "Ít đá"
+                          : item.iceLevel === "NONE"
+                            ? "Không đá"
+                            : "Bình thường"}
+                      </p>
                     </div>
                     <button
                       aria-label={`Xóa ${item.name} khỏi giỏ`}
@@ -247,7 +269,16 @@ export function CartPage() {
                         +
                       </button>
                     </div>
-                    <strong>{formatCurrency(item.unitPrice * item.quantity)}</strong>
+                    <strong>
+                      {formatCurrency(
+                        (item.unitPrice +
+                          item.toppings.reduce(
+                            (sum, topping) => sum + topping.price,
+                            0,
+                          )) *
+                          item.quantity,
+                      )}
+                    </strong>
                   </div>
                 </div>
               </article>

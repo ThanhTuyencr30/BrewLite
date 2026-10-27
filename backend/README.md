@@ -130,3 +130,17 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+## BrewLite package 2 API
+
+The package 2 product endpoints are implemented with NestJS and TypeScript:
+
+- `GET /products/:id` returns product details, S/M/L prices, image path, and stock.
+- `GET /toppings` returns available toppings and their VND prices.
+
+Product details and topping data are loaded from the shared Prisma database.
+The barista screen is a frontend-only demo and does not expose order endpoints.
+Product price calculation is in `src/products/pricing.ts`; run its unit tests
+with `npm test -- --runInBand`.
+
+Run the API locally with `npm run start:dev`. The default port is `3001`.

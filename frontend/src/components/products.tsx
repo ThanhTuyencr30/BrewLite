@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Image from "next/image";
 import { formatCurrency } from "@/lib/format";
 import {
   Button,
@@ -18,6 +19,7 @@ export type Product = {
   description?: string;
   price: number;
   image?: ReactNode;
+  imageUrl?: string;
   soldOut?: boolean;
 };
 
@@ -31,7 +33,17 @@ export function ProductCard({
   return (
     <article className="overflow-hidden rounded-3xl bg-white shadow-sm">
       <div className="relative grid aspect-square place-items-center overflow-hidden bg-gradient-to-br from-amber-100 to-orange-50">
-        {product.image ?? (
+        {product.imageUrl ? (
+          <Image
+            alt={product.name}
+            className="object-cover"
+            fill
+            sizes="(max-width: 430px) 45vw, 200px"
+            src={product.imageUrl}
+          />
+        ) : product.image ? (
+          product.image
+        ) : (
           <span aria-label={product.name} className="text-6xl" role="img">
             ☕
           </span>
@@ -52,12 +64,11 @@ export function ProductCard({
         <p className="mt-2 font-bold text-caramel">{formatCurrency(product.price)}</p>
         <Button
           className="mt-3 min-h-10 px-3 text-xs"
-          disabled={product.soldOut}
           fullWidth
           onClick={() => onViewDetails?.(product)}
           variant="secondary"
         >
-          {product.soldOut ? "Tạm hết hàng" : "Xem chi tiết"}
+          Xem chi tiết
         </Button>
       </div>
     </article>
@@ -107,7 +118,18 @@ export function ProductSummary({
   return (
     <div className="flex items-center gap-4">
       <div className="grid size-20 shrink-0 place-items-center rounded-2xl bg-amber-100 text-3xl">
-        {product.image ?? "☕"}
+        {product.imageUrl ? (
+          <Image
+            alt={product.name}
+            className="size-20 rounded-2xl object-cover"
+            height={80}
+            sizes="80px"
+            src={product.imageUrl}
+            width={80}
+          />
+        ) : (
+          product.image ?? "☕"
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <h2 className="truncate font-bold text-ink">{product.name}</h2>

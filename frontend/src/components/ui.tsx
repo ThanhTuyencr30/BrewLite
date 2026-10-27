@@ -85,7 +85,7 @@ export function Icon({
   );
 }
 
-type ButtonVariant = "primary" | "secondary" | "danger" | "link";
+type ButtonVariant = "primary" | "secondary" | "danger" | "link" | "neutral";
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
@@ -98,6 +98,7 @@ const buttonVariants: Record<ButtonVariant, string> = {
   secondary: "border border-caramel text-caramel hover:bg-caramel/5",
   danger: "bg-red-600 text-white hover:bg-red-700",
   link: "text-red-700 hover:underline",
+  neutral: "bg-stone-700 text-white hover:bg-stone-800",
 };
 
 export function Button({

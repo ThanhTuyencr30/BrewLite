@@ -11,22 +11,38 @@ import {
 } from "react";
 import type { PromotionValidation } from "@/lib/api.types";
 
+export interface CartTopping {
+  id: number;
+  name: string;
+  price: number;
+}
+
+export type CartIceLevel = "NORMAL" | "LESS" | "NONE";
+
 export interface CartItem {
   id: string;
   productId: number;
   name: string;
   imageUrl: string;
   size: "S" | "M" | "L";
+  iceLevel: CartIceLevel;
+  toppings: CartTopping[];
   quantity: number;
   unitPrice: number;
 }
+
+type AddCartItemInput = Omit<CartItem, "id" | "quantity" | "iceLevel" | "toppings"> & {
+  quantity?: number;
+  iceLevel?: CartIceLevel;
+  toppings?: CartTopping[];
+};
 
 interface CartContextValue {
   items: CartItem[];
   itemCount: number;
   storageError: string;
   appliedPromotion: PromotionValidation | null;
-  addItem: (item: Omit<CartItem, "id" | "quantity">) => void;
+  addItem: (item: AddCartItemInput) => void;
   setQuantity: (id: string, quantity: number) => void;
   updateItem: (id: string, quantity: number, unitPrice: number) => void;
   removeItem: (id: string) => void;
@@ -37,25 +53,72 @@ interface CartContextValue {
 const CART_STORAGE_KEY = "brewlite-cart";
 const CartContext = createContext<CartContextValue | null>(null);
 
-function isCartItem(value: unknown): value is CartItem {
-  if (!value || typeof value !== "object") {
-    return false;
+function getCartItemId(
+  productId: number,
+  size: CartItem["size"],
+  iceLevel: CartIceLevel,
+  toppings: CartTopping[],
+) {
+  const toppingKey = toppings
+    .map(({ id }) => id)
+    .sort((a, b) => a - b)
+    .join(".");
+  return `${productId}-${size}-${iceLevel}-${toppingKey}`;
+}
+
+function parseCartItem(value: unknown): CartItem | null {
+  if (typeof value !== "object" || value === null) return null;
+
+  const item = value as Record<string, unknown>;
+  const toppings = item.toppings === undefined ? [] : item.toppings;
+  const iceLevel = item.iceLevel ?? "NORMAL";
+  const validToppings =
+    Array.isArray(toppings) &&
+    toppings.every(
+      (topping: unknown) =>
+        typeof topping === "object" &&
+        topping !== null &&
+        "id" in topping &&
+        typeof topping.id === "number" &&
+        Number.isSafeInteger(topping.id) &&
+        "name" in topping &&
+        typeof topping.name === "string" &&
+        "price" in topping &&
+        typeof topping.price === "number" &&
+        Number.isSafeInteger(topping.price) &&
+        topping.price >= 0,
+    );
+
+  if (
+    typeof item.id !== "string" ||
+    typeof item.productId !== "number" ||
+    !Number.isSafeInteger(item.productId) ||
+    typeof item.name !== "string" ||
+    typeof item.imageUrl !== "string" ||
+    (item.size !== "S" && item.size !== "M" && item.size !== "L") ||
+    (iceLevel !== "NORMAL" && iceLevel !== "LESS" && iceLevel !== "NONE") ||
+    !validToppings ||
+    typeof item.quantity !== "number" ||
+    !Number.isSafeInteger(item.quantity) ||
+    item.quantity < 1 ||
+    typeof item.unitPrice !== "number" ||
+    !Number.isSafeInteger(item.unitPrice) ||
+    item.unitPrice < 0
+  ) {
+    return null;
   }
 
-  const item = value as Partial<CartItem>;
-  return (
-    typeof item.id === "string" &&
-    typeof item.productId === "number" &&
-    typeof item.name === "string" &&
-    typeof item.imageUrl === "string" &&
-    (item.size === "S" || item.size === "M" || item.size === "L") &&
-    typeof item.quantity === "number" &&
-    Number.isInteger(item.quantity) &&
-    item.quantity > 0 &&
-    typeof item.unitPrice === "number" &&
-    Number.isInteger(item.unitPrice) &&
-    item.unitPrice >= 0
-  );
+  return {
+    id: getCartItemId(item.productId, item.size, iceLevel, toppings),
+    productId: item.productId,
+    name: item.name,
+    imageUrl: item.imageUrl,
+    size: item.size,
+    iceLevel,
+    toppings,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+  };
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
@@ -77,10 +140,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const storedCart = window.localStorage.getItem(CART_STORAGE_KEY);
         if (storedCart) {
           const parsed: unknown = JSON.parse(storedCart);
-          if (!Array.isArray(parsed) || !parsed.every(isCartItem)) {
+          if (!Array.isArray(parsed)) {
             throw new Error("Dữ liệu giỏ hàng đã lưu không hợp lệ.");
           }
-          setItems(parsed);
+          const restoredItems = parsed.map(parseCartItem);
+          const validItems = restoredItems.filter(
+            (item): item is CartItem => item !== null,
+          );
+          if (validItems.length !== restoredItems.length) {
+            throw new Error("Dữ liệu giỏ hàng đã lưu không hợp lệ.");
+          }
+          setItems(validItems);
         }
       } catch (error: unknown) {
         setStorageError(
@@ -116,18 +186,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [isReady, items]);
 
   const addItem = useCallback(
-    (item: Omit<CartItem, "id" | "quantity">) => {
-      const id = `${item.productId}-${item.size}`;
+    (item: AddCartItemInput) => {
+      const toppings = item.toppings ?? [];
+      const iceLevel = item.iceLevel ?? "NORMAL";
+      const quantity = item.quantity ?? 1;
+      if (!Number.isSafeInteger(quantity) || quantity < 1) return;
+
+      const id = getCartItemId(item.productId, item.size, iceLevel, toppings);
       setItems((currentItems) => {
         const existingItem = currentItems.find((current) => current.id === id);
         if (existingItem) {
           return currentItems.map((current) =>
             current.id === id
-              ? { ...current, quantity: current.quantity + 1 }
+              ? { ...current, quantity: current.quantity + quantity }
               : current,
           );
         }
-        return [...currentItems, { ...item, id, quantity: 1 }];
+        return [
+          ...currentItems,
+          { ...item, id, iceLevel, toppings, quantity },
+        ];
       });
     },
     [],

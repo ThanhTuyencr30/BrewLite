@@ -29,15 +29,23 @@ export class ApiError extends Error {
   }
 }
 
-async function fetchJson<T>(path: string, signal: AbortSignal): Promise<T> {
+export async function fetchJson<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const headers = new Headers(options.headers);
+  headers.set("Accept", "application/json");
+  if (options.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    signal,
-    headers: { Accept: "application/json" },
+    ...options,
+    headers,
   });
 
   if (!response.ok) {
     throw new ApiError(
-      `API request failed with status ${response.status}`,
+      await readErrorMessage(response),
       response.status,
     );
   }
@@ -46,7 +54,7 @@ async function fetchJson<T>(path: string, signal: AbortSignal): Promise<T> {
 }
 
 export function getCategories(signal: AbortSignal) {
-  return fetchJson<Category[]>("/categories", signal);
+  return fetchJson<Category[]>("/categories", { signal });
 }
 
 export function getProducts(
@@ -64,7 +72,9 @@ export function getProducts(
   }
 
   const query = searchParams.toString();
-  return fetchJson<Product[]>(`/products${query ? `?${query}` : ""}`, signal);
+  return fetchJson<Product[]>(`/products${query ? `?${query}` : ""}`, {
+    signal,
+  });
 }
 
 function authHeaders(token?: string): Record<string, string> {
@@ -131,7 +141,7 @@ async function postJson<T>(
 }
 
 export function getPromotions(signal: AbortSignal) {
-  return fetchJson<Promotion[]>("/promotions/me", signal);
+  return fetchJson<Promotion[]>("/promotions/me", { signal });
 }
 
 export function validatePromotion(code: string, items: CartValidationInputItem[]) {
