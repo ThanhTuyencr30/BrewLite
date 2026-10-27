@@ -110,7 +110,7 @@ export default function MethodSelection({ onSelect }: MethodSelectionProps) {
           🛡
         </span>
         <p className="text-xs">
-          COLDEN COFFEE chỉ hỗ trợ thanh toán không tiền mặt
+          BREWLITE chỉ hỗ trợ thanh toán không tiền mặt
         </p>
       </div>
 

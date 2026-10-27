@@ -104,3 +104,28 @@ export interface PaymentResponse {
   amount: number;
   failureReason: string | null;
 }
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  fullName?: string;
+  phone?: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  fullName: string | null;
+  phone: string | null;
+  loyaltyPoints: number;
+}
+
+export interface LoginResponse {
+  accessToken: string;
+  user: User;
+}

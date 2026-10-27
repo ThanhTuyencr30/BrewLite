@@ -2,16 +2,30 @@ import type {
   CartValidationResult,
   CartValidationInputItem,
   Category,
+  LoginRequest,
+  LoginResponse,
   PaymentRequest,
   PaymentResponse,
   Product,
   Promotion,
   PromotionValidation,
+  RegisterRequest,
+  User,
 } from "./api.types";
 
 const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"
 ).replace(/\/$/, "");
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
 
 async function fetchJson<T>(path: string, signal: AbortSignal): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -20,7 +34,10 @@ async function fetchJson<T>(path: string, signal: AbortSignal): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
+    throw new ApiError(
+      `API request failed with status ${response.status}`,
+      response.status,
+    );
   }
 
   return response.json() as Promise<T>;
@@ -78,7 +95,7 @@ async function postJson<T>(
         }
       }
     }
-    throw new Error(message);
+    throw new ApiError(message, response.status);
   }
 
   return response.json() as Promise<T>;
@@ -109,4 +126,36 @@ export function submitPayment(
     },
     signal,
   );
+}
+
+export function register(data: RegisterRequest, signal?: AbortSignal) {
+  return postJson<User>("/auth/register", data, signal);
+}
+
+export function login(data: LoginRequest, signal?: AbortSignal) {
+  return postJson<LoginResponse>("/auth/login", data, signal);
+}
+
+export async function getMe(
+  token: string,
+  signal?: AbortSignal,
+): Promise<User> {
+  const response = await fetch(`${API_BASE_URL}/auth/me`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    },
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status === 401
+        ? "Your session has expired."
+        : "Unable to load your account.",
+      response.status,
+    );
+  }
+
+  return response.json() as Promise<User>;
 }
