@@ -56,6 +56,11 @@ export function RegisterForm() {
         return;
       }
 
+      if (error instanceof ApiError && error.status === 400) {
+        setErrors({ email: "Email chưa đúng định dạng (ví dụ ten@example.com)." });
+        return;
+      }
+
       setDialog({
         tone: "error",
         title: "Đăng ký chưa thành công",

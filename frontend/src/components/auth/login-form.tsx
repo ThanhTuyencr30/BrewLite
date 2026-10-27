@@ -57,7 +57,9 @@ export function LoginForm() {
           error instanceof ApiError
             ? error.status === 401
               ? "Email hoặc mật khẩu chưa chính xác. Hãy kiểm tra và thử lại nhé."
-              : "Hệ thống chưa thể xử lý đăng nhập. Vui lòng thử lại sau ít phút."
+              : error.status === 400
+                ? "Email chưa đúng định dạng. Hãy nhập dạng ten@example.com và thử lại nhé."
+                : "Hệ thống chưa thể xử lý đăng nhập. Vui lòng thử lại sau ít phút."
             : "Chưa thể kết nối để đăng nhập. Vui lòng kiểm tra kết nối và thử lại.",
         primaryLabel: "Thử lại",
       });
