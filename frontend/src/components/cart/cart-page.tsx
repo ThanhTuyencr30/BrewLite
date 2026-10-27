@@ -104,7 +104,9 @@ export function CartPage() {
           items: items.map((item) => ({
             productId: item.productId,
             size: item.size,
+            iceLevel: item.iceLevel,
             quantity: item.quantity,
+            toppingIds: item.toppings.map((topping) => topping.id),
           })),
           discountCode: appliedPromotion?.promotion.code,
         },
