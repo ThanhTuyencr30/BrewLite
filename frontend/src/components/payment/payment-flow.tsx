@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ScreenState, PaymentMethod } from "@/lib/api.types";
-import { ApiError, submitPayment } from "@/lib/api";
+import { ScreenState, PaymentMethod, PaymentResponse } from "@/lib/api.types";
+import { ApiError, confirmQrPayment, getMe, submitPayment } from "@/lib/api";
 import { clearAccessToken, getAccessToken, loginUrl } from "@/lib/auth-token";
 import MethodSelection from "@/components/payment/method-selection";
 import CardForm from "@/components/payment/card-form";
@@ -28,34 +28,53 @@ export default function PaymentFlow({ orderId, amount }: PaymentFlowProps) {
   const [method, setMethod] = useState<PaymentMethod | null>(null);
   const [paidAmount, setPaidAmount] = useState(amount);
   const [errorMessage, setErrorMessage] = useState<string>();
+  const [rewardPoints, setRewardPoints] = useState(0);
+  const [totalPoints, setTotalPoints] = useState<number>();
+  const [qrPayment, setQrPayment] = useState<PaymentResponse | null>(null);
+  const [isBusy, setIsBusy] = useState(false);
 
   const redirectToLogin = () =>
     router.push(loginUrl(`/payment?orderId=${orderId}&amount=${amount}`));
 
-  const handleProcessPayment = async (selectedMethod: PaymentMethod) => {
+  const showResult = (payment: PaymentResponse) => {
+    setPaidAmount(payment.amount);
+
+    if (payment.status === "SUCCEEDED") {
+      setRewardPoints(payment.rewardPoints);
+      setScreen("ORDER_SUCCESS");
+      const token = getAccessToken();
+      if (token) {
+        getMe(token)
+          .then((user) => setTotalPoints(user.loyaltyPoints))
+          .catch(() => setTotalPoints(undefined));
+      }
+      return;
+    }
+
+    if (payment.status === "FAILED") {
+      setErrorMessage(payment.failureReason ?? undefined);
+      setScreen("FAILED");
+      return;
+    }
+
+    if (payment.method === "QR" && payment.qrExpiresAt) {
+      setQrPayment(payment);
+      setScreen("QR_CODE");
+    }
+    // PENDING khác: giữ màn hình đang xử lý trong lúc chờ cổng thanh toán xác nhận.
+  };
+
+  const runPayment = async (request: (token: string) => Promise<PaymentResponse>) => {
     const token = getAccessToken();
     if (!token) {
       redirectToLogin();
       return;
     }
 
-    setScreen("PROCESSING");
+    setIsBusy(true);
     setErrorMessage(undefined);
-
     try {
-      const payment = await submitPayment({ orderId, method: selectedMethod }, token);
-      setPaidAmount(payment.amount);
-
-      if (payment.status === "SUCCEEDED") {
-        setScreen("ORDER_SUCCESS");
-        return;
-      }
-
-      if (payment.status === "FAILED") {
-        setErrorMessage(payment.failureReason ?? undefined);
-        setScreen("FAILED");
-      }
-      // PENDING: giữ màn hình đang xử lý trong lúc chờ cổng thanh toán xác nhận.
+      showResult(await request(token));
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         clearAccessToken();
@@ -64,7 +83,27 @@ export default function PaymentFlow({ orderId, amount }: PaymentFlowProps) {
       }
       setErrorMessage(error instanceof Error ? error.message : undefined);
       setScreen("FAILED");
+    } finally {
+      setIsBusy(false);
     }
+  };
+
+  const handleProcessPayment = (selectedMethod: PaymentMethod, cardNumber?: string) => {
+    // Mã QR hiện ngay trên màn QR, không cần màn "Đang xử lý".
+    if (selectedMethod !== "QR") setScreen("PROCESSING");
+    return runPayment((token) =>
+      submitPayment({ orderId, method: selectedMethod, cardNumber }, token),
+    );
+  };
+
+  const handleConfirmQr = () => {
+    if (!qrPayment) return;
+    return runPayment((token) => confirmQrPayment(qrPayment.id, token));
+  };
+
+  const handleRetry = () => {
+    if (method === "CARD") setScreen("CARD_FORM");
+    else if (method) void handleProcessPayment(method);
   };
 
   const goToOrder = () => router.push(`/orders/${orderId}`);
@@ -100,7 +139,7 @@ export default function PaymentFlow({ orderId, amount }: PaymentFlowProps) {
               onSelect={(selected) => {
                 setMethod(selected);
                 if (selected === "CARD") setScreen("CARD_FORM");
-                if (selected === "QR") setScreen("QR_CODE");
+                if (selected === "QR") void handleProcessPayment(selected);
                 if (selected === "E_WALLET") void handleProcessPayment(selected);
               }}
             />
@@ -115,19 +154,24 @@ export default function PaymentFlow({ orderId, amount }: PaymentFlowProps) {
             amount={paidAmount}
             orderId={orderId}
             onBack={() => setScreen("SELECT_METHOD")}
-            onSubmit={() => void handleProcessPayment("CARD")}
+            onSubmit={(cardNumber) => void handleProcessPayment("CARD", cardNumber)}
           />
         </div>
       )}
 
       {/* Màn 3: QR Code */}
-      {screen === "QR_CODE" && (
+      {screen === "QR_CODE" && qrPayment?.qrExpiresAt && (
         <div className="p-4 h-full">
           <QRPayment
+            key={qrPayment.id}
             amount={paidAmount}
             orderId={orderId}
+            expiresAt={qrPayment.qrExpiresAt}
+            isBusy={isBusy}
             onBack={() => setScreen("SELECT_METHOD")}
             onCancel={goToOrder}
+            onConfirm={() => void handleConfirmQr()}
+            onRegenerate={() => void handleProcessPayment("QR")}
           />
         </div>
       )}
@@ -146,7 +190,7 @@ export default function PaymentFlow({ orderId, amount }: PaymentFlowProps) {
             amount={paidAmount}
             orderId={orderId}
             errorMessage={errorMessage}
-            onRetry={() => method && void handleProcessPayment(method)}
+            onRetry={handleRetry}
             onChangeMethod={() => setScreen("SELECT_METHOD")}
             onCancel={goToOrder}
           />
@@ -160,7 +204,8 @@ export default function PaymentFlow({ orderId, amount }: PaymentFlowProps) {
             orderId={orderId}
             amount={paidAmount}
             method={method ? METHOD_LABELS[method] : METHOD_LABELS.E_WALLET}
-            points={Math.floor(paidAmount / 10000)} // 1 điểm / 10.000đ
+            points={rewardPoints}
+            totalPoints={totalPoints}
             onTrackOrder={goToOrder}
             onGoHome={() => router.push("/")}
           />

@@ -136,10 +136,15 @@ export function submitPayment(
       orderId: payload.orderId,
       method: payload.method === "E_WALLET" ? "WALLET" : payload.method,
       idempotencyKey: crypto.randomUUID(),
+      ...(payload.cardNumber && { cardNumber: payload.cardNumber }),
     },
     signal,
     token,
   );
+}
+
+export function confirmQrPayment(paymentId: string, token: string) {
+  return postJson<PaymentResponse>(`/payments/${paymentId}/confirm`, {}, undefined, token);
 }
 
 export function register(data: RegisterRequest, signal?: AbortSignal) {

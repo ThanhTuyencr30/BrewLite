@@ -5,7 +5,7 @@ interface CardFormProps {
   amount: number;
   orderId: string;
   onBack: () => void;
-  onSubmit: () => void;
+  onSubmit: (cardNumber: string) => void;
 }
 
 export default function CardForm({
@@ -42,7 +42,7 @@ export default function CardForm({
     });
 
     if (isCardValid && isCvvValid && isExpiryValid) {
-      onSubmit();
+      onSubmit(cleanCardNumber);
     }
   };
 
