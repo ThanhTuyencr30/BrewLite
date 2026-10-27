@@ -6,6 +6,7 @@ describe('OrdersScheduler', () => {
     order: { updateMany: jest.fn() },
     orderStatusHistory: { create: jest.fn() },
     product: { update: jest.fn() },
+    promotion: { updateMany: jest.fn() },
   };
   const findMany = jest.fn();
   const prisma = {
@@ -16,6 +17,7 @@ describe('OrdersScheduler', () => {
   const expiredOrder = {
     id: 'order-1',
     version: 0,
+    promotionId: 5,
     items: [{ productId: 1, quantity: 2 }],
   };
 
@@ -34,6 +36,10 @@ describe('OrdersScheduler', () => {
       where: { id: 1 },
       data: { stock: { increment: 2 } },
     });
+    expect(tx.promotion.updateMany).toHaveBeenCalledWith({
+      where: { id: 5, usedCount: { gt: 0 } },
+      data: { usedCount: { decrement: 1 } },
+    });
   });
 
   it('skips orders that changed status before cancellation', async () => {
@@ -43,5 +49,6 @@ describe('OrdersScheduler', () => {
 
     expect(tx.orderStatusHistory.create).not.toHaveBeenCalled();
     expect(tx.product.update).not.toHaveBeenCalled();
+    expect(tx.promotion.updateMany).not.toHaveBeenCalled();
   });
 });

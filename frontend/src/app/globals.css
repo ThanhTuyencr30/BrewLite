@@ -1987,7 +1987,9 @@ body {
   margin-top: 18px;
 }
 
-.cart-confirm-dialog__actions button {
+.cart-confirm-dialog__actions button,
+.cart-confirm-dialog__actions a {
+  align-items: center;
   background: #f5efe7;
   border: 0;
   border-radius: 9px;
@@ -1996,10 +1998,17 @@ body {
   flex: 1;
   font-size: 12px;
   font-weight: 700;
+  justify-content: center;
   min-height: 40px;
+  text-decoration: none;
 }
 
-.cart-confirm-dialog__actions button.is-danger {
+.cart-confirm-dialog__actions a {
+  display: flex;
+}
+
+.cart-confirm-dialog__actions button.is-danger,
+.cart-confirm-dialog__actions a.is-danger {
   background: #aa5947;
   color: white;
 }
@@ -2631,12 +2640,6 @@ body {
   font-size: 14px;
   line-height: 1.35;
   margin: 0;
-}
-
-.cart-login-notice {
-  color: #9b3d30 !important;
-  font-size: 12px !important;
-  margin-top: 12px !important;
 }
 
 .cart-login-dismiss {

@@ -3,10 +3,11 @@ import { useState } from "react";
 import { PaymentMethod } from "@/lib/api.types";
 
 interface MethodSelectionProps {
+  amount: number;
   onSelect: (method: PaymentMethod) => void;
 }
 
-export default function MethodSelection({ onSelect }: MethodSelectionProps) {
+export default function MethodSelection({ amount, onSelect }: MethodSelectionProps) {
   const [selected, setSelected] = useState<PaymentMethod | null>(null);
 
   return (
@@ -121,7 +122,7 @@ export default function MethodSelection({ onSelect }: MethodSelectionProps) {
           onClick={() => selected && onSelect(selected)}
           className="w-full bg-[#c08d60] text-white py-4 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
         >
-          Xác nhận thanh toán - 119.000đ
+          Xác nhận thanh toán - {amount.toLocaleString("vi-VN")}đ
         </button>
       </div>
     </div>

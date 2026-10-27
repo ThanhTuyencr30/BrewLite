@@ -57,6 +57,14 @@ export class OrdersScheduler {
             data: { stock: { increment: item.quantity } },
           });
         }
+
+        // 4. Trả lại lượt dùng mã giảm giá (nếu có)
+        if (order.promotionId) {
+          await tx.promotion.updateMany({
+            where: { id: order.promotionId, usedCount: { gt: 0 } },
+            data: { usedCount: { decrement: 1 } },
+          });
+        }
       });
     }
   }

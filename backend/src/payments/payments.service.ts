@@ -4,14 +4,29 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { OrderStatus } from '../generated/prisma/client';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+
+const PAYABLE_ORDER_STATUSES: OrderStatus[] = [
+  OrderStatus.PENDING,
+  OrderStatus.PAYMENT_FAILED,
+];
 
 @Injectable()
 export class PaymentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreatePaymentDto) {
-    // 1. Kiểm tra khóa Idempotency đã được sử dụng chưa.
+  async create(userId: string, dto: CreatePaymentDto) {
+    // 1. Kiểm tra đơn hàng tồn tại và thuộc về người dùng hiện tại.
+    const order = await this.prisma.order.findUnique({
+      where: { id: dto.orderId },
+    });
+
+    if (!order || order.userId !== userId) {
+      throw new NotFoundException('Order not found.');
+    }
+
+    // 2. Kiểm tra khóa Idempotency đã được sử dụng chưa.
     const existing = await this.prisma.payment.findUnique({
       where: { idempotencyKey: dto.idempotencyKey },
     });
@@ -28,16 +43,12 @@ export class PaymentsService {
       return existing;
     }
 
-    // 2. Kiểm tra đơn hàng tồn tại.
-    const order = await this.prisma.order.findUnique({
-      where: { id: dto.orderId },
-    });
-
-    if (!order) {
-      throw new NotFoundException('Order not found.');
+    // 3. Chỉ nhận thanh toán cho đơn đang chờ thanh toán.
+    if (!PAYABLE_ORDER_STATUSES.includes(order.status)) {
+      throw new ConflictException('Order is not awaiting payment.');
     }
 
-    // 3. Tạo bản ghi thanh toán ở trạng thái PENDING.
+    // 4. Tạo bản ghi thanh toán ở trạng thái PENDING.
     try {
       return await this.prisma.payment.create({
         data: {
