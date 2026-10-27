@@ -19,10 +19,13 @@ const METHOD_LABELS: Record<PaymentMethod, string> = {
 
 interface PaymentFlowProps {
   orderId: string;
+  orderCode?: string;
   amount: number;
 }
 
-export default function PaymentFlow({ orderId, amount }: PaymentFlowProps) {
+export default function PaymentFlow({ orderId, orderCode, amount }: PaymentFlowProps) {
+  // Mã hiển thị cho khách (CC-xxxxxx); orderId chỉ dùng để gọi API.
+  const orderLabel = orderCode ?? orderId;
   const router = useRouter();
   const [screen, setScreen] = useState<ScreenState>("SELECT_METHOD");
   const [method, setMethod] = useState<PaymentMethod | null>(null);
@@ -34,7 +37,9 @@ export default function PaymentFlow({ orderId, amount }: PaymentFlowProps) {
   const [isBusy, setIsBusy] = useState(false);
 
   const redirectToLogin = () =>
-    router.push(loginUrl(`/payment?orderId=${orderId}&amount=${amount}`));
+    router.push(
+      loginUrl(`/payment?orderId=${orderId}&amount=${amount}${orderCode ? `&code=${orderCode}` : ""}`),
+    );
 
   const showResult = (payment: PaymentResponse) => {
     setPaidAmount(payment.amount);
@@ -106,7 +111,7 @@ export default function PaymentFlow({ orderId, amount }: PaymentFlowProps) {
     else if (method) void handleProcessPayment(method);
   };
 
-  const goToOrder = () => router.push(`/orders/${orderId}`);
+  const goToOrder = () => router.push(`/checkout/${orderId}`);
 
   return (
     <main className="max-w-md mx-auto h-screen bg-[#F5EBE1] text-[#4a3b32] font-sans overflow-y-auto">
@@ -130,7 +135,7 @@ export default function PaymentFlow({ orderId, amount }: PaymentFlowProps) {
             <h2 className="text-2xl font-bold text-[#4a3b32] my-1">
               {paidAmount.toLocaleString("vi-VN")}đ
             </h2>
-            <p className="text-xs text-gray-400">Mã đơn hàng: {orderId}</p>
+            <p className="text-xs text-gray-400">Mã đơn hàng: {orderLabel}</p>
           </div>
 
           <div className="flex-1">
@@ -152,7 +157,7 @@ export default function PaymentFlow({ orderId, amount }: PaymentFlowProps) {
         <div className="p-4 h-full">
           <CardForm
             amount={paidAmount}
-            orderId={orderId}
+            orderId={orderLabel}
             onBack={() => setScreen("SELECT_METHOD")}
             onSubmit={(cardNumber) => void handleProcessPayment("CARD", cardNumber)}
           />
@@ -165,7 +170,7 @@ export default function PaymentFlow({ orderId, amount }: PaymentFlowProps) {
           <QRPayment
             key={qrPayment.id}
             amount={paidAmount}
-            orderId={orderId}
+            orderId={orderLabel}
             expiresAt={qrPayment.qrExpiresAt}
             isBusy={isBusy}
             onBack={() => setScreen("SELECT_METHOD")}
@@ -179,7 +184,7 @@ export default function PaymentFlow({ orderId, amount }: PaymentFlowProps) {
       {/* Màn 4: Đang xử lý */}
       {screen === "PROCESSING" && (
         <div className="p-4 h-full">
-          <ProcessingState amount={paidAmount} orderId={orderId} />
+          <ProcessingState amount={paidAmount} orderId={orderLabel} />
         </div>
       )}
 
@@ -188,7 +193,7 @@ export default function PaymentFlow({ orderId, amount }: PaymentFlowProps) {
         <div className="p-4 h-full">
           <FailedState
             amount={paidAmount}
-            orderId={orderId}
+            orderId={orderLabel}
             errorMessage={errorMessage}
             onRetry={handleRetry}
             onChangeMethod={() => setScreen("SELECT_METHOD")}
@@ -201,7 +206,7 @@ export default function PaymentFlow({ orderId, amount }: PaymentFlowProps) {
       {screen === "ORDER_SUCCESS" && (
         <div className="h-full">
           <OrderSuccess
-            orderId={orderId}
+            orderId={orderLabel}
             amount={paidAmount}
             method={method ? METHOD_LABELS[method] : METHOD_LABELS.E_WALLET}
             points={rewardPoints}

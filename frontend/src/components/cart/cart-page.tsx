@@ -104,7 +104,7 @@ export function CartPage() {
       );
       clearCart();
       setAppliedPromotion(null);
-      router.push(`/payment?orderId=${order.id}&amount=${order.total}`);
+      router.push(`/checkout/${order.id}`);
     } catch (error: unknown) {
       if (error instanceof ApiError && error.status === 401) {
         clearAccessToken();
