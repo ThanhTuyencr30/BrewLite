@@ -14,12 +14,12 @@ import type { Request } from 'express';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrdersService } from './orders.service';
 import { OrderStatus } from '../generated/prisma/client';
-import { AuthGuard } from '@nestjs/passport';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth/jwt-auth.guard';
 
 type AuthenticatedRequest = Request & { user: { id: string } };
 
 @Controller('orders')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(JwtAuthGuard)
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 

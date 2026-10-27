@@ -5,7 +5,7 @@ export default function SessionExpiredPage() {
   return (
     <main className={styles.authPage}>
       <div className={styles.authFrame}>
-        <Link className={styles.logo} href="/" aria-label="Colden Coffee - Trang chủ">
+        <Link className={styles.logo} href="/" aria-label="BrewLite - Trang chủ">
           <span className={styles.logoMark} aria-hidden="true">
             <svg viewBox="0 0 40 40" fill="none">
               <path d="M10 17h20v9a10 10 0 0 1-20 0v-9Z" />
@@ -13,7 +13,7 @@ export default function SessionExpiredPage() {
             </svg>
           </span>
           <span className={styles.logoText}>
-            <strong>COLDEN COFFEE</strong>
+            <strong>BREWLITE</strong>
             <small>Một chút cà phê, một chút yêu thương.</small>
           </span>
         </Link>
@@ -33,7 +33,7 @@ export default function SessionExpiredPage() {
             Về trang chủ
           </Link>
         </section>
-        <p className={styles.authLegal}>COLDEN COFFEE · Hẹn gặp lại bạn nhé</p>
+        <p className={styles.authLegal}>BREWLITE · Hẹn gặp lại bạn nhé</p>
       </div>
     </main>
   );

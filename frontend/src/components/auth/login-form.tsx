@@ -44,7 +44,7 @@ export function LoginForm() {
       setDialog({
         tone: "success",
         title: "Đăng nhập thành công",
-        message: "Chào mừng bạn quay trở lại COLDEN COFFEE.",
+        message: "Chào mừng bạn quay trở lại BrewLite.",
         primaryLabel:
           destination === "/" ? "Về trang chủ" : "Tiếp tục",
         destination,

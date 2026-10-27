@@ -112,7 +112,7 @@ export default function ProfilePage() {
           <span className={styles.memberDetails}>
             <strong>{user.fullName || user.email}</strong>
             {user.fullName && <span>{user.email}</span>}
-            <span className={styles.memberBadge}>Thành viên COLDEN COFFEE</span>
+            <span className={styles.memberBadge}>Thành viên BREWLITE</span>
           </span>
           <span aria-hidden="true" className={styles.memberSparkle}>✦</span>
         </section>
@@ -160,7 +160,7 @@ export default function ProfilePage() {
           <span aria-hidden="true">↪</span>
           Đăng xuất
         </button>
-        <p className={styles.accountFooter}>COLDEN COFFEE · Một chút yêu thương</p>
+        <p className={styles.accountFooter}>BREWLITE · Một chút yêu thương</p>
       </div>
 
       {dialog === "logout" && (
