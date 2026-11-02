@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { PasswordResetService } from './password-reset.service';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -15,6 +16,13 @@ describe('AuthController', () => {
             register: jest.fn(),
             login: jest.fn(),
             me: jest.fn(),
+          },
+        },
+        {
+          provide: PasswordResetService,
+          useValue: {
+            requestReset: jest.fn(),
+            resetPassword: jest.fn(),
           },
         },
       ],

@@ -183,6 +183,26 @@ export function login(data: LoginRequest, signal?: AbortSignal) {
   return postJson<LoginResponse>("/auth/login", data, signal);
 }
 
+export function requestPasswordReset(email: string, signal?: AbortSignal) {
+  return postJson<{ message: string }>(
+    "/auth/forgot-password",
+    { email },
+    signal,
+  );
+}
+
+export function resetPassword(
+  token: string,
+  password: string,
+  signal?: AbortSignal,
+) {
+  return postJson<{ message: string }>(
+    "/auth/reset-password",
+    { token, password },
+    signal,
+  );
+}
+
 export async function getMe(
   token: string,
   signal?: AbortSignal,
@@ -209,6 +229,10 @@ export async function getMe(
 
 export function createOrder(data: CreateOrderRequest, token: string) {
   return postJson<Order>("/orders", data, undefined, token);
+}
+
+export function getMyOrders(token: string, signal?: AbortSignal) {
+  return getJsonWithAuth<Order[]>("/orders/me", token, signal);
 }
 
 export function getOrder(id: string, token: string, signal?: AbortSignal) {

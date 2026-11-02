@@ -7,6 +7,7 @@ import { ApiError, login } from "@/lib/api";
 import { setAccessToken } from "@/lib/auth-token";
 import { AuthResultDialog, type DialogTone } from "./auth-result-dialog";
 import { AuthShell } from "./auth-shell";
+import { PasswordVisibilityToggle } from "./password-visibility-toggle";
 import styles from "./auth.module.css";
 
 
@@ -120,17 +121,15 @@ export function LoginForm() {
               type={showPassword ? "text" : "password"}
               value={password}
             />
-            <button
-              aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-              aria-pressed={showPassword}
-              className={styles.passwordToggle}
-              onClick={() => setShowPassword((visible) => !visible)}
-              type="button"
-            >
-              {showPassword ? "Ẩn" : "Hiện"}
-            </button>
+            <PasswordVisibilityToggle
+              visible={showPassword}
+              onToggle={() => setShowPassword((visible) => !visible)}
+            />
           </span>
         </div>
+        <Link className={styles.forgotLink} href="/forgot-password">
+          Quên mật khẩu?
+        </Link>
 
         <button
           className={styles.authSubmit}

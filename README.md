@@ -18,7 +18,7 @@ docker compose up --build
 
 - Frontend: `http://localhost:3000`
 - Backend: `http://localhost:3001`
-- PostgreSQL: `localhost:5432`
+- PostgreSQL: `localhost:5433` (cổng host mặc định; trong Docker vẫn là `5432`)
 
 Lần đầu chạy, backend tự áp dụng migration và nạp dữ liệu mẫu (chỉ khi
 database chưa có sản phẩm, nên khởi động lại không làm mất tồn kho). Các giá
@@ -59,6 +59,21 @@ npm run dev
 
 Frontend mặc định chạy tại `http://localhost:3000` và đọc API URL từ
 `NEXT_PUBLIC_API_URL`.
+
+## Khôi phục mật khẩu
+
+Trang đăng nhập có liên kết **Quên mật khẩu?**. Backend hỗ trợ:
+
+```http
+POST /auth/forgot-password  # { "email": "user@example.com" }
+POST /auth/reset-password   # { "token": "...", "password": "..." }
+```
+
+Để gửi email, cấu hình `MAIL_HOST`, `MAIL_PORT`, `MAIL_SECURE`, `MAIL_USER`,
+`MAIL_PASSWORD` và `MAIL_FROM` trong `.env` gốc khi chạy Docker hoặc
+`backend/.env` khi chạy riêng. SMTP credentials chỉ để trong file `.env`, không
+commit. Liên kết reset hết hạn sau 60 phút, chỉ dùng một lần; endpoint yêu cầu
+đặt lại luôn trả thông báo chung để không tiết lộ email có tài khoản hay không.
 
 ## API menu
 
