@@ -1,28 +1,24 @@
-const SKELETON_ITEMS = Array.from({ length: 8 }, (_, index) => index);
+const SKELETON_ITEMS = Array.from({ length: 6 }, (_, index) => index);
 
 export function MenuSkeleton() {
   return (
-    <section className="menu-content" aria-label="Đang tải menu" aria-busy="true">
-      <div className="skeleton-line skeleton-line--title" />
-      <div className="skeleton-line skeleton-line--subtitle" />
-      <div className="category-list skeleton-categories">
-        {SKELETON_ITEMS.slice(0, 5).map((item) => (
-          <div className="skeleton-pill" key={item} />
-        ))}
+    <main className="coffee-app figma-loading-screen" aria-label="Đang tải menu" aria-busy="true">
+      <div className="figma-loading-heading">
+        <div className="figma-skeleton-line figma-skeleton-line--brand" />
+        <div className="figma-skeleton-line figma-skeleton-line--subtitle" />
+        <div className="figma-skeleton-line figma-skeleton-line--heading" />
       </div>
-      <div className="product-grid">
+      <section className="figma-skeleton-grid">
         {SKELETON_ITEMS.map((item) => (
-          <article className="product-card product-card--skeleton" key={item}>
-            <div className="skeleton-image" />
-            <div className="product-card__body">
-              <div className="skeleton-line skeleton-line--short" />
-              <div className="skeleton-line" />
-              <div className="skeleton-line skeleton-line--medium" />
-            </div>
+          <article className="figma-skeleton-card" key={item}>
+            <div className="figma-skeleton-image" />
+            <div className="figma-skeleton-line figma-skeleton-line--title" />
+            <div className="figma-skeleton-line figma-skeleton-line--price" />
+            <div className="figma-skeleton-button" />
           </article>
         ))}
-      </div>
+      </section>
       <span className="sr-only">Đang tải danh sách sản phẩm</span>
-    </section>
+    </main>
   );
 }

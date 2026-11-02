@@ -19,7 +19,7 @@ export function AuthShell({
     <main className={styles.authPage}>
       <div className={styles.authGlow} aria-hidden="true" />
       <div className={styles.authFrame}>
-        <Link className={styles.logo} href="/" aria-label="Colden Coffee - Trang chủ">
+        <Link className={styles.logo} href="/" aria-label="BrewLite - Trang chủ">
           <span className={styles.logoMark} aria-hidden="true">
             <svg viewBox="0 0 40 40" fill="none">
               <path d="M10 17h20v9a10 10 0 0 1-20 0v-9Z" />
@@ -27,7 +27,7 @@ export function AuthShell({
             </svg>
           </span>
           <span className={styles.logoText}>
-            <strong>COLDEN COFFEE</strong>
+            <strong>BREWLITE</strong>
             <small>Một chút cà phê, một chút yêu thương.</small>
           </span>
         </Link>
@@ -42,7 +42,7 @@ export function AuthShell({
           <div className={styles.authFooter}>{footer}</div>
         </section>
 
-        <p className={styles.authLegal}>© 2026 Colden Coffee · Pha bằng sự tử tế</p>
+        <p className={styles.authLegal}>© 2026 BrewLite · Pha bằng sự tử tế</p>
       </div>
     </main>
   );

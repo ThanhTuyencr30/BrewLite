@@ -15,7 +15,7 @@ export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [dialog, setDialog] = useState<"logout" | "orders" | "promotions" | null>(
+  const [dialog, setDialog] = useState<"logout" | "promotions" | null>(
     null,
   );
 
@@ -112,7 +112,7 @@ export default function ProfilePage() {
           <span className={styles.memberDetails}>
             <strong>{user.fullName || user.email}</strong>
             {user.fullName && <span>{user.email}</span>}
-            <span className={styles.memberBadge}>Thành viên COLDEN COFFEE</span>
+            <span className={styles.memberBadge}>Thành viên BREWLITE</span>
           </span>
           <span aria-hidden="true" className={styles.memberSparkle}>✦</span>
         </section>
@@ -134,7 +134,7 @@ export default function ProfilePage() {
         <section className={styles.accountActions} aria-label="Tiện ích tài khoản">
           <button
             className={styles.accountAction}
-            onClick={() => setDialog("orders")}
+            onClick={() => router.push("/orders")}
             type="button"
           >
             <span className={styles.actionIcon} aria-hidden="true">▤</span>
@@ -160,7 +160,7 @@ export default function ProfilePage() {
           <span aria-hidden="true">↪</span>
           Đăng xuất
         </button>
-        <p className={styles.accountFooter}>COLDEN COFFEE · Một chút yêu thương</p>
+        <p className={styles.accountFooter}>BREWLITE · Một chút yêu thương</p>
       </div>
 
       {dialog === "logout" && (
@@ -174,16 +174,12 @@ export default function ProfilePage() {
           tone="warning"
         />
       )}
-      {(dialog === "orders" || dialog === "promotions") && (
+      {dialog === "promotions" && (
         <AuthResultDialog
           message="Tính năng này sẽ sớm có mặt. Cảm ơn bạn đã chờ đợi nhé!"
           onPrimary={() => setDialog(null)}
           primaryLabel="Đã hiểu"
-          title={
-            dialog === "orders"
-              ? "Lịch sử đơn hàng"
-              : "Mã giảm giá của tôi"
-          }
+          title="Mã giảm giá của tôi"
           tone="info"
         />
       )}

@@ -1,8 +1,8 @@
 # BrewLite Frontend
 
-Giao diện được xây dựng bằng Next.js App Router, React và Tailwind CSS. Trang
-`src/app/page.tsx` hiện là màn menu mẫu tương tác; component nghiệp vụ nhận
-callbacks để kết nối với API và state management sau này.
+Giao diện dùng Next.js App Router, React, TypeScript và Tailwind CSS.
+`src/app/page.tsx` là menu mẫu; `src/app/products/[id]/page.tsx` là chi tiết món,
+và `src/app/barista/page.tsx` là quầy pha chế demo theo thiết kế trong PDF Figma.
 
 ## Component dùng chung
 
@@ -11,7 +11,10 @@ callbacks để kết nối với API và state management sau này.
 - `src/components/checkout.tsx`: giỏ hàng, tổng tiền, voucher và thanh toán.
 - `src/components/orders.tsx`: trạng thái, thẻ đơn, timeline và hoàn tiền.
 - `src/components/account.tsx`: layout/form đăng nhập, hồ sơ và điểm thưởng.
+- `src/components/product-detail.tsx`: chọn size, đá, topping và số lượng.
+- `src/components/barista.tsx`: chuyển trạng thái demo của đơn hàng.
 - `src/components/index.ts`: barrel exports cho các component dùng chung.
+- Ảnh sản phẩm trong `public/` được trích từ file thiết kế giao diện được cung cấp.
 
 Ví dụ:
 
@@ -19,15 +22,49 @@ Ví dụ:
 import { Button, ProductCard } from "@/components";
 ```
 
-Các component chỉ trình bày giao diện và gọi callback; dữ liệu giỏ hàng, đơn
-hàng, khuyến mãi và thanh toán cần được nối với service/state của ứng dụng.
+Các trang chi tiết món sử dụng `CartProvider` hiện có để lưu lựa chọn size, đá
+và topping trong giỏ hàng trên trình duyệt. Đăng nhập, đặt hàng và thanh toán
+không thuộc phạm vi giao diện Gói 2.
 
 ## Chạy local
 
 ```bash
 npm ci
+```
+
+Tạo `frontend/.env.local` từ `.env.example`, rồi chạy backend ở cổng 3001:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3001
+```
+
+Trong terminal riêng:
+
+```bash
+cd backend
+npm ci
+npm run start:dev
+```
+
+Quay lại terminal frontend:
+
+```bash
 npm run dev
 ```
 
-Mở [http://localhost:3000](http://localhost:3000). Kiểm tra chất lượng bằng
-`npm run lint` và `npm run build`.
+Các API Gói 2 được dùng:
+
+- `GET /products/:id`: thông tin món, giá size S/M/L và tồn kho.
+- `GET /toppings`: danh sách topping cùng giá.
+
+Quầy pha chế là giao diện demo; trạng thái đơn được chuyển cục bộ trên trình
+duyệt, không gọi API đơn hàng.
+
+Kiểm tra chất lượng bằng:
+
+```bash
+npm run lint
+npm run build
+```
+
+Mở [http://localhost:3000](http://localhost:3000).

@@ -4,11 +4,11 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ApiError, login } from "@/lib/api";
+import { setAccessToken } from "@/lib/auth-token";
 import { AuthResultDialog, type DialogTone } from "./auth-result-dialog";
 import { AuthShell } from "./auth-shell";
 import styles from "./auth.module.css";
 
-const ACCESS_TOKEN_KEY = "accessToken";
 
 interface DialogState {
   tone: DialogTone;
@@ -32,7 +32,7 @@ export function LoginForm() {
 
     try {
       const result = await login({ email: email.trim(), password });
-      window.localStorage.setItem(ACCESS_TOKEN_KEY, result.accessToken);
+      setAccessToken(result.accessToken);
       const requestedDestination = new URLSearchParams(
         window.location.search,
       ).get("next");
@@ -44,7 +44,7 @@ export function LoginForm() {
       setDialog({
         tone: "success",
         title: "Đăng nhập thành công",
-        message: "Chào mừng bạn quay trở lại COLDEN COFFEE.",
+        message: "Chào mừng bạn quay trở lại BrewLite.",
         primaryLabel:
           destination === "/" ? "Về trang chủ" : "Tiếp tục",
         destination,
@@ -57,7 +57,9 @@ export function LoginForm() {
           error instanceof ApiError
             ? error.status === 401
               ? "Email hoặc mật khẩu chưa chính xác. Hãy kiểm tra và thử lại nhé."
-              : "Hệ thống chưa thể xử lý đăng nhập. Vui lòng thử lại sau ít phút."
+              : error.status === 400
+                ? "Email chưa đúng định dạng. Hãy nhập dạng ten@example.com và thử lại nhé."
+                : "Hệ thống chưa thể xử lý đăng nhập. Vui lòng thử lại sau ít phút."
             : "Chưa thể kết nối để đăng nhập. Vui lòng kiểm tra kết nối và thử lại.",
         primaryLabel: "Thử lại",
       });

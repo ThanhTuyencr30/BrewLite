@@ -8,7 +8,6 @@ import { JwtAuthGuard } from './guards/jwt-auth/jwt-auth.guard';
 interface AuthenticatedRequest {
   user: {
     id: string;
-    email: string;
   };
 }
 

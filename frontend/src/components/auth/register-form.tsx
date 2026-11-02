@@ -48,11 +48,16 @@ export function RegisterForm() {
       setDialog({
         tone: "success",
         title: "Đăng ký thành công",
-        message: "Chào mừng bạn đến với COLDEN COFFEE. Đăng nhập để bắt đầu nhé!",
+        message: "Chào mừng bạn đến với BrewLite. Đăng nhập để bắt đầu nhé!",
       });
     } catch (error: unknown) {
       if (error instanceof ApiError && error.status === 409) {
         setErrors({ email: "Email này đã được sử dụng." });
+        return;
+      }
+
+      if (error instanceof ApiError && error.status === 400) {
+        setErrors({ email: "Email chưa đúng định dạng (ví dụ ten@example.com)." });
         return;
       }
 
