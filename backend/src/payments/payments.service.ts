@@ -12,6 +12,7 @@ import {
 import { OrderStateMachine } from '../orders/order-state-machine.service';
 import { loyaltyPointsFor } from '../users/loyalty-points';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { VnpayService } from './vnpay/vnpay.service';
 
 const PAYABLE_ORDER_STATUSES: OrderStatus[] = [
   OrderStatus.PENDING,
@@ -23,19 +24,35 @@ export const QR_VALIDITY_MS = 15 * 60 * 1000;
 // Thẻ thử nghiệm luôn bị từ chối, dùng để demo màn thanh toán thất bại.
 export const DECLINED_TEST_CARD = '4000000000000002';
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export type PaymentResult = Payment & {
   rewardPoints: number;
   qrExpiresAt: Date | null;
+  paymentUrl: string | null;
 };
+
+// Mã phản hồi theo đặc tả IPN của VNPay.
+export interface VnpayCallbackOutcome {
+  code: '00' | '01' | '02' | '04' | '97';
+  message: string;
+  paymentId?: string;
+}
 
 @Injectable()
 export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly orderStateMachine: OrderStateMachine,
+    private readonly vnpay: VnpayService,
   ) {}
 
-  async create(userId: string, dto: CreatePaymentDto): Promise<PaymentResult> {
+  async create(
+    userId: string,
+    dto: CreatePaymentDto,
+    ipAddress = '127.0.0.1',
+  ): Promise<PaymentResult> {
     // 1. Kiểm tra đơn hàng tồn tại và thuộc về người dùng hiện tại.
     const order = await this.prisma.order.findUnique({
       where: { id: dto.orderId },
@@ -59,7 +76,7 @@ export class PaymentsService {
       }
 
       // Cùng yêu cầu: trả lại bản ghi cũ, không tạo thanh toán mới.
-      return this.toResult(existing);
+      return this.withPaymentUrl(this.toResult(existing), order.code, ipAddress);
     }
 
     // 3. Chỉ nhận thanh toán cho đơn đang chờ thanh toán.
@@ -103,14 +120,19 @@ export class PaymentsService {
             );
           }
 
-          return this.toResult(concurrent);
+          return this.withPaymentUrl(this.toResult(concurrent), order.code, ipAddress);
         }
       }
 
       throw error;
     }
 
-    // 5. Giả lập cổng thanh toán: Ví và Thẻ có kết quả ngay, QR chờ xác nhận.
+    // 5a. VNPay: chuyển khách sang cổng VNPay, kết quả do VNPay xác nhận.
+    if (dto.method === 'VNPAY') {
+      return this.withPaymentUrl(this.toResult(payment), order.code, ipAddress);
+    }
+
+    // 5b. Giả lập cổng thanh toán: Ví và Thẻ có kết quả ngay, QR chờ xác nhận.
     if (dto.method === 'QR') {
       return this.toResult(payment);
     }
@@ -120,6 +142,64 @@ export class PaymentsService {
     }
 
     return this.settleSuccess(payment.id);
+  }
+
+  async findOne(userId: string, paymentId: string) {
+    if (!UUID_PATTERN.test(paymentId)) {
+      throw new NotFoundException('Payment not found.');
+    }
+
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: { order: { select: { code: true, userId: true } } },
+    });
+
+    if (!payment || payment.order.userId !== userId) {
+      throw new NotFoundException('Payment not found.');
+    }
+
+    const { order, ...rest } = payment;
+    return { ...this.toResult(rest), orderCode: order.code };
+  }
+
+  // Xử lý kết quả VNPay gửi về (Return URL của trình duyệt hoặc IPN của máy chủ).
+  // Hai đường có thể đến cùng lúc nên thao tác phải idempotent.
+  async handleVnpayCallback(query: Record<string, unknown>): Promise<VnpayCallbackOutcome> {
+    const result = this.vnpay.verify(query);
+
+    if (!result.isValidSignature) {
+      return { code: '97', message: 'Invalid signature' };
+    }
+
+    const payment = UUID_PATTERN.test(result.txnRef)
+      ? await this.prisma.payment.findUnique({ where: { id: result.txnRef } })
+      : null;
+
+    if (!payment || payment.method !== 'VNPAY') {
+      return { code: '01', message: 'Order not found' };
+    }
+
+    // Luôn đối chiếu số tiền với database, không tin số tiền trong URL.
+    if (payment.amount !== result.amount) {
+      return { code: '04', message: 'Invalid amount', paymentId: payment.id };
+    }
+
+    if (payment.status !== PaymentStatus.PENDING) {
+      return { code: '02', message: 'Order already confirmed', paymentId: payment.id };
+    }
+
+    if (result.isSuccess) {
+      await this.settleSuccess(payment.id);
+    } else {
+      await this.settleFailure(
+        payment.id,
+        result.responseCode === '24'
+          ? 'Khách đã hủy giao dịch trên VNPay.'
+          : `VNPay từ chối giao dịch (mã ${result.responseCode}).`,
+      );
+    }
+
+    return { code: '00', message: 'Confirm Success', paymentId: payment.id };
   }
 
   // Giả lập ngân hàng báo đã nhận chuyển khoản cho mã QR.
@@ -205,7 +285,7 @@ export class PaymentsService {
       });
 
       const succeeded = await tx.payment.findUniqueOrThrow({ where: { id: paymentId } });
-      return { ...succeeded, rewardPoints, qrExpiresAt: null };
+      return { ...succeeded, rewardPoints, qrExpiresAt: null, paymentUrl: null };
     });
   }
 
@@ -248,6 +328,26 @@ export class PaymentsService {
       payment.method === 'QR' && payment.status === PaymentStatus.PENDING
         ? new Date(payment.createdAt.getTime() + QR_VALIDITY_MS)
         : null;
-    return { ...payment, rewardPoints, qrExpiresAt };
+    return { ...payment, rewardPoints, qrExpiresAt, paymentUrl: null };
+  }
+
+  private withPaymentUrl(
+    result: PaymentResult,
+    orderCode: string,
+    ipAddress: string,
+  ): PaymentResult {
+    if (result.method !== 'VNPAY' || result.status !== PaymentStatus.PENDING) {
+      return result;
+    }
+
+    return {
+      ...result,
+      paymentUrl: this.vnpay.buildPaymentUrl({
+        txnRef: result.id,
+        amount: result.amount,
+        orderInfo: `Thanh toan don hang ${orderCode}`,
+        ipAddress,
+      }),
+    };
   }
 }

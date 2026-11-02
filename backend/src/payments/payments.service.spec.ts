@@ -7,6 +7,7 @@ import { PrismaService } from '../database/prisma.service';
 import { OrderStateMachine } from '../orders/order-state-machine.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { DECLINED_TEST_CARD, PaymentsService, QR_VALIDITY_MS } from './payments.service';
+import type { VnpayService } from './vnpay/vnpay.service';
 
 describe('PaymentsService', () => {
   let service: PaymentsService;
@@ -20,6 +21,11 @@ describe('PaymentsService', () => {
     order: { updateMany: jest.fn() },
     orderStatusHistory: { create: jest.fn() },
     user: { update: jest.fn() },
+  };
+
+  const vnpay = {
+    buildPaymentUrl: jest.fn(),
+    verify: jest.fn(),
   };
 
   const prisma = {
@@ -64,6 +70,7 @@ describe('PaymentsService', () => {
     service = new PaymentsService(
       prisma as unknown as PrismaService,
       new OrderStateMachine(),
+      vnpay as unknown as VnpayService,
     );
   });
 
@@ -268,6 +275,152 @@ describe('PaymentsService', () => {
         where: { id: payment.id, status: 'PENDING' },
         data: { status: 'FAILED', failureReason: 'Mã QR đã hết hạn.' },
       });
+    });
+  });
+
+  describe('VNPay', () => {
+    const vnpayOrder = { ...order, userId, version: 0, status: 'PENDING', code: 'CC-123456' };
+    const vnpayPayment = { ...payment, method: 'VNPAY', status: 'PENDING' };
+    const verified = {
+      isValidSignature: true,
+      txnRef: payment.id,
+      amount: payment.amount,
+      isSuccess: true,
+      responseCode: '00',
+    };
+
+    beforeEach(() => {
+      vnpay.buildPaymentUrl.mockReturnValue('https://sandbox.vnpayment.vn/pay?x=1');
+      prisma.order.findUnique.mockResolvedValue(vnpayOrder);
+      prisma.payment.findUnique.mockResolvedValue(null);
+      prisma.payment.create.mockResolvedValue(vnpayPayment);
+      tx.order.updateMany.mockResolvedValue({ count: 1 });
+      tx.payment.updateMany.mockResolvedValue({ count: 1 });
+    });
+
+    it('returns a VNPay payment URL and leaves the payment pending', async () => {
+      const result = await service.create(userId, { ...dto, method: 'VNPAY' }, '10.0.0.5');
+
+      expect(result).toMatchObject({
+        status: 'PENDING',
+        paymentUrl: 'https://sandbox.vnpayment.vn/pay?x=1',
+      });
+      expect(vnpay.buildPaymentUrl).toHaveBeenCalledWith({
+        txnRef: payment.id,
+        amount: payment.amount,
+        orderInfo: 'Thanh toan don hang CC-123456',
+        ipAddress: '10.0.0.5',
+      });
+      expect(tx.order.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('rebuilds the URL when the same request is repeated', async () => {
+      prisma.payment.findUnique.mockResolvedValue(vnpayPayment);
+
+      const result = await service.create(userId, { ...dto, method: 'VNPAY' });
+
+      expect(prisma.payment.create).not.toHaveBeenCalled();
+      expect(result.paymentUrl).toBe('https://sandbox.vnpayment.vn/pay?x=1');
+    });
+
+    it('rejects a callback with an invalid signature without touching the database', async () => {
+      vnpay.verify.mockReturnValue({ ...verified, isValidSignature: false });
+
+      await expect(service.handleVnpayCallback({})).resolves.toEqual({
+        code: '97',
+        message: 'Invalid signature',
+      });
+      expect(prisma.payment.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('answers 01 for an unknown or malformed transaction reference', async () => {
+      vnpay.verify.mockReturnValue({ ...verified, txnRef: 'not-a-uuid' });
+      await expect(service.handleVnpayCallback({})).resolves.toMatchObject({ code: '01' });
+
+      vnpay.verify.mockReturnValue(verified);
+      prisma.payment.findUnique.mockResolvedValue(null);
+      await expect(service.handleVnpayCallback({})).resolves.toMatchObject({ code: '01' });
+    });
+
+    it('answers 04 when the amount differs from the stored payment', async () => {
+      vnpay.verify.mockReturnValue({ ...verified, amount: 1000 });
+      prisma.payment.findUnique.mockResolvedValue(vnpayPayment);
+
+      await expect(service.handleVnpayCallback({})).resolves.toMatchObject({ code: '04' });
+      expect(tx.order.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('answers 02 when the payment was already confirmed', async () => {
+      vnpay.verify.mockReturnValue(verified);
+      prisma.payment.findUnique.mockResolvedValue({ ...vnpayPayment, status: 'SUCCEEDED' });
+
+      await expect(service.handleVnpayCallback({})).resolves.toMatchObject({
+        code: '02',
+        paymentId: payment.id,
+      });
+      expect(tx.order.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('marks the order paid and awards points on a successful callback', async () => {
+      vnpay.verify.mockReturnValue(verified);
+      prisma.payment.findUnique.mockResolvedValue(vnpayPayment);
+      tx.payment.findUniqueOrThrow
+        .mockResolvedValueOnce({ ...vnpayPayment, order: vnpayOrder })
+        .mockResolvedValueOnce({ ...vnpayPayment, status: 'SUCCEEDED' });
+
+      await expect(service.handleVnpayCallback({})).resolves.toEqual({
+        code: '00',
+        message: 'Confirm Success',
+        paymentId: payment.id,
+      });
+      expect(tx.order.updateMany).toHaveBeenCalledWith({
+        where: { id: order.id, version: 0 },
+        data: { status: 'PAID', version: { increment: 1 } },
+      });
+      expect(tx.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { loyaltyPoints: { increment: 3 } },
+      });
+    });
+
+    it('marks the payment failed when the customer cancels on VNPay', async () => {
+      vnpay.verify.mockReturnValue({ ...verified, isSuccess: false, responseCode: '24' });
+      prisma.payment.findUnique.mockResolvedValue(vnpayPayment);
+      tx.payment.update.mockResolvedValue({
+        ...vnpayPayment,
+        status: 'FAILED',
+        order: vnpayOrder,
+      });
+
+      await service.handleVnpayCallback({});
+
+      expect(tx.payment.update).toHaveBeenCalledWith({
+        where: { id: payment.id },
+        data: { status: 'FAILED', failureReason: 'Khách đã hủy giao dịch trên VNPay.' },
+        include: { order: true },
+      });
+      expect(tx.order.updateMany).toHaveBeenCalledWith({
+        where: { id: order.id, version: 0 },
+        data: { status: 'PAYMENT_FAILED', version: { increment: 1 } },
+      });
+    });
+
+    it('lets owners read a payment together with the order code', async () => {
+      prisma.payment.findUnique.mockResolvedValue({
+        ...vnpayPayment,
+        order: { code: 'CC-123456', userId },
+      });
+
+      await expect(service.findOne(userId, payment.id)).resolves.toMatchObject({
+        id: payment.id,
+        orderCode: 'CC-123456',
+      });
+      await expect(service.findOne('someone-else', payment.id)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      await expect(service.findOne(userId, 'not-a-uuid')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
   });
 });

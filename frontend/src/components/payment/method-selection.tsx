@@ -17,6 +17,36 @@ export default function MethodSelection({ amount, onSelect }: MethodSelectionPro
       </p>
 
       <div className="flex flex-col gap-3 mb-6">
+        {/* VNPay: cổng thanh toán bên thứ ba xác nhận kết quả */}
+        <button
+          onClick={() => setSelected("VNPAY")}
+          className={`flex items-center justify-between p-4 bg-white rounded-xl border-2 transition-all ${
+            selected === "VNPAY" ? "border-[#c08d60]" : "border-transparent"
+          }`}
+          type="button"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#fcf8e3] rounded-lg flex items-center justify-center text-sm font-bold text-[#c08d60]">
+              VN
+            </div>
+            <div className="text-left">
+              <p className="font-bold text-[#4a3b32] text-sm">VNPay</p>
+              <p className="text-xs text-gray-500">
+                Thẻ, QR và ngân hàng nội địa qua cổng VNPay
+              </p>
+            </div>
+          </div>
+          <div
+            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+              selected === "VNPAY" ? "border-[#c08d60]" : "border-gray-300"
+            }`}
+          >
+            {selected === "VNPAY" && (
+              <div className="w-2.5 h-2.5 bg-[#c08d60] rounded-full" />
+            )}
+          </div>
+        </button>
+
         {/* Ví điện tử */}
         <button
           onClick={() => setSelected("E_WALLET")}
@@ -30,7 +60,7 @@ export default function MethodSelection({ amount, onSelect }: MethodSelectionPro
             </div>
             <div className="text-left">
               <p className="font-bold text-[#4a3b32] text-sm">Ví điện tử</p>
-              <p className="text-xs text-gray-500">MoMo, ZaloPay, VNPay</p>
+              <p className="text-xs text-gray-500">Giả lập, không qua cổng thật</p>
             </div>
           </div>
           <div
