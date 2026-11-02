@@ -234,7 +234,7 @@ async function main() {
   for (const topping of toppings) {
     const savedTopping = await prisma.topping.upsert({
       where: { slug: topping.slug },
-      update: topping,
+      update: { ...topping, isAvailable: true },
       create: topping,
     });
     toppingIds.set(savedTopping.slug, savedTopping.id);
