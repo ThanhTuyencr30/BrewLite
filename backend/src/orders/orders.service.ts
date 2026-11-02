@@ -43,7 +43,7 @@ export class OrdersService {
       },
       orderBy: { createdAt: 'desc' },
       include: { 
-        items: { include: { product: true } } 
+        items: { include: { product: true, toppings: true } }
       }
     });
   }
@@ -53,7 +53,7 @@ export class OrdersService {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: { 
-        items: { include: { product: true } },
+        items: { include: { product: true, toppings: true } },
         statusHistory: true // Lấy lịch sử để vẽ Timeline
       }
     });

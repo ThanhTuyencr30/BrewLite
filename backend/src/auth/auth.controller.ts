@@ -4,6 +4,9 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth/jwt-auth.guard';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { PasswordResetService } from './password-reset.service';
 
 interface AuthenticatedRequest {
   user: {
@@ -13,7 +16,10 @@ interface AuthenticatedRequest {
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly passwordResetService: PasswordResetService,
+  ) {}
 
   @Post('register')
   register(@Body() registerDto: RegisterDto) {
@@ -23,6 +29,16 @@ export class AuthController {
   @Post('login')
   login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
+  }
+
+  @Post('forgot-password')
+  requestPasswordReset(@Body() dto: ForgotPasswordDto) {
+    return this.passwordResetService.requestReset(dto.email);
+  }
+
+  @Post('reset-password')
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.passwordResetService.resetPassword(dto.token, dto.password);
   }
 
   @UseGuards(JwtAuthGuard)
