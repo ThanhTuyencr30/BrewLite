@@ -182,6 +182,15 @@ Bấm **Hủy** trên trang VNPay để demo giao dịch thất bại.
   thanh toán được ghi nhận `FAILED` kèm lý do và cần hoàn tiền thủ công từ
   trang quản trị VNPay; ứng dụng chưa gọi API hoàn tiền của VNPay.
 
+## Tồn kho nguyên liệu
+
+- Bảng `ingredients` lưu tồn kho theo đơn vị nhỏ nhất (`g`, `ml`), ví dụ `Cà phê hạt: 5000 g`.
+- Bảng `product_ingredients` lưu định lượng nguyên liệu cho **một ly**, tách theo từng sản phẩm và size.
+- Khi tạo đơn, backend cộng dồn nguyên liệu cần dùng và trừ kho trong cùng transaction với tồn kho món. Thiếu nguyên liệu thì đơn bị từ chối, không trừ gì cả.
+- Hủy đơn hoặc đơn quá hạn 15 phút sẽ hoàn lại nguyên liệu đã trừ.
+- Seed sẵn 27 nguyên liệu và công thức cho 27 món. Với database đã có sản phẩm từ trước, chạy một lần:
+  `docker compose exec backend npx prisma db seed`
+
 ## Kiểm tra
 
 ```bash
