@@ -188,7 +188,7 @@ export function ProductDetailScreen({
 
       <section className="mb-5">
         <SectionTitle title="Topping" />
-        <Card className="divide-y divide-stone-100 p-3">
+        <Card className="product-topping-list divide-y divide-stone-100 p-3">
           {toppings.map((topping) => (
             <label
               className="flex min-h-9 cursor-pointer items-center justify-between gap-3 py-1 text-sm font-medium text-ink"

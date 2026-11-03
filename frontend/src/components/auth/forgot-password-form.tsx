@@ -43,8 +43,10 @@ export function ForgotPasswordForm() {
       {hasSubmitted ? (
         <div className={styles.resetNotice} role="status">
           <p>
-            Nếu email đã đăng ký, hướng dẫn đặt lại mật khẩu sẽ được gửi trong
-            ít phút. Hãy kiểm tra cả thư mục spam nhé.
+            Nếu Gmail này đã đăng ký, liên kết xác nhận sẽ được gửi đến{" "}
+            <strong>{email.trim()}</strong>. Mở email, nhấn liên kết để sang
+            trang tạo mật khẩu mới và xác nhận lại mật khẩu. Hãy kiểm tra cả
+            thư mục spam nhé.
           </p>
           <Link className={styles.authSubmit} href="/login">
             Quay lại đăng nhập
@@ -74,7 +76,7 @@ export function ForgotPasswordForm() {
             disabled={isSubmitting}
             type="submit"
           >
-            {isSubmitting ? "Đang gửi..." : "Gửi liên kết đặt lại"}
+            {isSubmitting ? "Đang gửi xác nhận..." : "Xác nhận Gmail"}
           </button>
         </form>
       )}
