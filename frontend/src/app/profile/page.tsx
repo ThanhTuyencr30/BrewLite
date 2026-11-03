@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthResultDialog } from "@/components/auth/auth-result-dialog";
-import { ApiError, getMe } from "@/lib/api";
-import type { User } from "@/lib/api.types";
+import { ApiError, getMe, getPromotions } from "@/lib/api";
+import type { Promotion, User } from "@/lib/api.types";
+import { formatCurrency } from "@/lib/format";
 import styles from "./profile.module.css";
 
 const ACCESS_TOKEN_KEY = "accessToken";
@@ -15,9 +16,81 @@ export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [promotionError, setPromotionError] = useState("");
+  const [promotionState, setPromotionState] = useState<
+    "idle" | "loading" | "loaded" | "error"
+  >("idle");
+  const [promotionRetry, setPromotionRetry] = useState(0);
+  const promotionDialog = useRef<HTMLElement>(null);
+  const promotionCloseButton = useRef<HTMLButtonElement>(null);
   const [dialog, setDialog] = useState<"logout" | "promotions" | null>(
     null,
   );
+
+  useEffect(() => {
+    if (dialog !== "promotions") {
+      return;
+    }
+
+    const controller = new AbortController();
+    setPromotionState("loading");
+    setPromotionError("");
+    void getPromotions(controller.signal)
+      .then((result) => {
+        setPromotions(result);
+        setPromotionState("loaded");
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setPromotionState("error");
+        setPromotionError(
+          error instanceof Error
+            ? error.message
+            : "Không thể tải danh sách mã giảm giá.",
+        );
+      });
+
+    return () => controller.abort();
+  }, [dialog, promotionRetry]);
+
+  useEffect(() => {
+    if (dialog !== "promotions") {
+      return;
+    }
+
+    promotionCloseButton.current?.focus();
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setDialog(null);
+        return;
+      }
+
+      if (event.key === "Tab") {
+        const focusable = promotionDialog.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], input:not([disabled])',
+        );
+        if (!focusable?.length) {
+          return;
+        }
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [dialog]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -175,13 +248,118 @@ export default function ProfilePage() {
         />
       )}
       {dialog === "promotions" && (
-        <AuthResultDialog
-          message="Tính năng này sẽ sớm có mặt. Cảm ơn bạn đã chờ đợi nhé!"
-          onPrimary={() => setDialog(null)}
-          primaryLabel="Đã hiểu"
-          title="Mã giảm giá của tôi"
-          tone="info"
-        />
+        <div
+          className={styles.promotionBackdrop}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setDialog(null);
+            }
+          }}
+        >
+          <section
+            aria-describedby="profile-promotions-description"
+            aria-labelledby="profile-promotions-title"
+            aria-modal="true"
+            className={styles.promotionDialog}
+            ref={promotionDialog}
+            role="dialog"
+          >
+            <button
+              aria-label="Đóng danh sách mã giảm giá"
+              className={styles.promotionClose}
+              onClick={() => setDialog(null)}
+              ref={promotionCloseButton}
+              type="button"
+            >
+              ×
+            </button>
+            <span className={styles.promotionDialogIcon} aria-hidden="true">
+              %
+            </span>
+            <h2 id="profile-promotions-title">Mã giảm giá của tôi</h2>
+            <p
+              className={styles.promotionDialogIntro}
+              id="profile-promotions-description"
+            >
+              Các mã ưu đãi hiện có tại BrewLite.
+            </p>
+            <div aria-live="polite" className={styles.promotionList}>
+              {promotionState === "idle" || promotionState === "loading" ? (
+                <p className={styles.promotionMessage} role="status">
+                  Đang tải danh sách mã giảm giá...
+                </p>
+              ) : promotionState === "error" ? (
+                <div className={styles.promotionMessage} role="alert">
+                  <p>
+                    {promotionError || "Không thể tải danh sách mã giảm giá."}
+                  </p>
+                  <button
+                    className={styles.promotionRetry}
+                    onClick={() => setPromotionRetry((retry) => retry + 1)}
+                    type="button"
+                  >
+                    Thử lại
+                  </button>
+                </div>
+              ) : promotions.length === 0 ? (
+                <p className={styles.promotionMessage}>
+                  Hiện chưa có mã giảm giá nào.
+                </p>
+              ) : (
+                promotions.map((promotion) => (
+                  <article
+                    className={styles.promotionCard}
+                    key={promotion.id}
+                  >
+                    <div className={styles.promotionCardHeading}>
+                      <strong>{promotion.code}</strong>
+                      <span
+                        className={
+                          promotion.isAvailable
+                            ? styles.promotionAvailable
+                            : styles.promotionUnavailable
+                        }
+                      >
+                        {promotion.isAvailable
+                          ? "Đang áp dụng"
+                          : "Chưa khả dụng"}
+                      </span>
+                    </div>
+                    <p className={styles.promotionDiscount}>
+                      {promotion.discountType === "PERCENT"
+                        ? `Giảm ${promotion.value}%${
+                            promotion.maxDiscount !== null
+                              ? `, tối đa ${formatCurrency(promotion.maxDiscount)}`
+                              : ""
+                          }`
+                        : `Giảm ${formatCurrency(promotion.value)}`}
+                    </p>
+                    {promotion.description && (
+                      <p className={styles.promotionDescription}>
+                        {promotion.description}
+                      </p>
+                    )}
+                    <p className={styles.promotionTerms}>
+                      Đơn tối thiểu {formatCurrency(promotion.minOrderValue)}
+                    </p>
+                    <p className={styles.promotionExpiry}>
+                      {promotion.isAvailable
+                        ? `Hạn sử dụng: ${new Date(promotion.endsAt).toLocaleDateString("vi-VN")}`
+                        : promotion.availabilityMessage}
+                    </p>
+                  </article>
+                ))
+              )}
+            </div>
+            <button
+              className={styles.promotionDone}
+              onClick={() => setDialog(null)}
+              type="button"
+            >
+              Đã hiểu
+            </button>
+          </section>
+        </div>
       )}
     </main>
   );
