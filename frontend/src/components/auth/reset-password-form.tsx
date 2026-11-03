@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, type FormEvent } from "react";
 import { resetPassword } from "@/lib/api";
 import { PasswordVisibilityToggle } from "./password-visibility-toggle";
 import { AuthShell } from "./auth-shell";
 import styles from "./auth.module.css";
 
 export function ResetPasswordForm({ token }: { token: string }) {
+  const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -15,6 +17,18 @@ export function ResetPasswordForm({ token }: { token: string }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!isComplete) {
+      return;
+    }
+
+    const redirectTimer = window.setTimeout(() => {
+      router.replace("/login");
+    }, 2500);
+
+    return () => window.clearTimeout(redirectTimer);
+  }, [isComplete, router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,7 +71,10 @@ export function ResetPasswordForm({ token }: { token: string }) {
         </div>
       ) : isComplete ? (
         <div className={styles.resetNotice} role="status">
-          <p>Mật khẩu đã được cập nhật. Bạn có thể đăng nhập ngay bây giờ.</p>
+          <p>
+            Mật khẩu đã được cập nhật thành công. Đang chuyển về trang đăng
+            nhập...
+          </p>
           <Link className={styles.authSubmit} href="/login">
             Đến đăng nhập
           </Link>

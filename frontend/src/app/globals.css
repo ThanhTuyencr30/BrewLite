@@ -3317,6 +3317,29 @@ body {
   color: #994b3c;
 }
 
+.product-topping-list {
+  max-height: 180px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--figma-caramel) var(--figma-cream);
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.product-topping-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.product-topping-list::-webkit-scrollbar-thumb {
+  background: var(--figma-caramel);
+  border-radius: 999px;
+}
+
+.product-topping-list::-webkit-scrollbar-track {
+  background: var(--figma-cream);
+  border-radius: 999px;
+}
+
 @media (max-width: 360px) {
   .cart-item {
     gap: 7px;
