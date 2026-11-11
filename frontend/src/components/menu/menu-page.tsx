@@ -11,6 +11,8 @@ import { clearAccessToken, getAccessToken } from "@/lib/auth-token";
 import { MenuSkeleton } from "./menu-skeleton";
 import { ProductCard } from "./product-card";
 
+const SEARCH_DEBOUNCE_MS = 300;
+
 function AccountIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -30,17 +32,38 @@ function CartIcon() {
   );
 }
 
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" />
+      <path d="m16.5 16.5 4.5 4.5" />
+    </svg>
+  );
+}
+
+function ClearIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 6l12 12M18 6 6 18" />
+    </svg>
+  );
+}
+
 export function MenuPage() {
   const { itemCount } = useCart();
   const [activeCategory, setActiveCategory] = useState("ca-phe");
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const menuContentRef = useRef<HTMLDivElement>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isSearching, setIsSearching] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [accountUser, setAccountUser] = useState<User | null>(null);
   const [accountLoadFailed, setAccountLoadFailed] = useState(false);
+  const hasLoadedCategoriesRef = useRef(false);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -71,20 +94,44 @@ export function MenuPage() {
   }, []);
 
   useEffect(() => {
+    const timerId = window.setTimeout(() => {
+      setDebouncedSearch(searchInput.trim());
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timerId);
+  }, [searchInput]);
+
+  useEffect(() => {
     const controller = new AbortController();
 
     async function loadMenu() {
-      setIsLoading(true);
+      if (hasLoadedCategoriesRef.current) {
+        setIsSearching(true);
+      } else {
+        setIsInitialLoading(true);
+      }
       setHasError(false);
 
       try {
-        const [nextCategories, nextProducts] = await Promise.all([
-          getCategories(controller.signal),
-          getProducts({ search: "", category: "all" }, controller.signal),
-        ]);
+        if (!hasLoadedCategoriesRef.current) {
+          const [nextCategories, nextProducts] = await Promise.all([
+            getCategories(controller.signal),
+            getProducts(
+              { search: debouncedSearch, category: "all" },
+              controller.signal,
+            ),
+          ]);
 
-        setCategories(nextCategories);
-        setProducts(nextProducts);
+          hasLoadedCategoriesRef.current = true;
+          setCategories(nextCategories);
+          setProducts(nextProducts);
+        } else {
+          const nextProducts = await getProducts(
+            { search: debouncedSearch, category: "all" },
+            controller.signal,
+          );
+          setProducts(nextProducts);
+        }
       } catch (error: unknown) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
@@ -93,14 +140,15 @@ export function MenuPage() {
         setHasError(true);
       } finally {
         if (!controller.signal.aborted) {
-          setIsLoading(false);
+          setIsInitialLoading(false);
+          setIsSearching(false);
         }
       }
     }
 
     void loadMenu();
     return () => controller.abort();
-  }, [retryCount]);
+  }, [debouncedSearch, retryCount]);
 
   useEffect(() => {
     const contentElement = menuContentRef.current;
@@ -154,7 +202,16 @@ export function MenuPage() {
     };
   }, [categories, products]);
 
-  if (isLoading) {
+  function handleClearSearch() {
+    setSearchInput("");
+    setDebouncedSearch("");
+  }
+
+  const visibleCategories = categories.filter((category) =>
+    products.some((product) => product.category.slug === category.slug),
+  );
+
+  if (isInitialLoading) {
     return <MenuSkeleton />;
   }
 
@@ -162,7 +219,10 @@ export function MenuPage() {
     return (
       <ConnectionError
         onRetry={() => setRetryCount((count) => count + 1)}
-        onHome={() => setActiveCategory("ca-phe")}
+        onHome={() => {
+          handleClearSearch();
+          setActiveCategory("ca-phe");
+        }}
       />
     );
   }
@@ -203,81 +263,134 @@ export function MenuPage() {
       </header>
 
       <section className="figma-menu" id="menu" aria-labelledby="menu-title">
-          <Image
-            className="coffee-mark"
-            src="/products/coffee-mark.png"
-            alt=""
-            width={78}
-            height={72}
-            priority
-          />
-          <h1 id="menu-title">Menu hôm nay</h1>
+        <Image
+          className="coffee-mark"
+          src="/products/coffee-mark.png"
+          alt=""
+          width={78}
+          height={72}
+          priority
+        />
+        <h1 id="menu-title">Menu hôm nay</h1>
 
-          <div className="figma-menu__body">
-            {!hasError && categories.length > 0 && (
-              <nav className="vertical-categories" aria-label="Đi đến danh mục">
-                {categories
-                  .filter((category) =>
-                    products.some((product) => product.category.slug === category.slug),
-                  )
-                  .map((category) => (
-                    <button
-                      className={activeCategory === category.slug ? "is-active" : ""}
-                      type="button"
-                      aria-current={activeCategory === category.slug ? "true" : undefined}
-                      onClick={() => {
-                        setActiveCategory(category.slug);
-                        document
-                          .getElementById(`category-${category.slug}`)
-                          ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                      }}
+        <div className="figma-search" role="search">
+          <label className="sr-only" htmlFor="menu-search-input">
+            Tìm kiếm món trong thực đơn
+          </label>
+          <span className="figma-search__icon">
+            <SearchIcon />
+          </span>
+          <input
+            id="menu-search-input"
+            type="search"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && searchInput) {
+                event.preventDefault();
+                handleClearSearch();
+              }
+            }}
+            placeholder="Tìm món (VD: Trà đào, Latte...)"
+            autoComplete="off"
+          />
+          {searchInput.length > 0 && (
+            <button
+              type="button"
+              className="figma-search__clear"
+              aria-label="Xóa từ khóa tìm kiếm"
+              onClick={handleClearSearch}
+            >
+              <ClearIcon />
+            </button>
+          )}
+        </div>
+
+        {(isSearching || debouncedSearch.length > 0) && (
+          <p className="figma-search-status" aria-live="polite">
+            {isSearching
+              ? "Đang tìm món..."
+              : `Tìm thấy ${products.length} món cho "${debouncedSearch}"`}
+          </p>
+        )}
+
+        <div className="figma-menu__body">
+          {!hasError && visibleCategories.length > 0 && (
+            <nav className="vertical-categories" aria-label="Đi đến danh mục">
+              {visibleCategories.map((category) => (
+                <button
+                  className={activeCategory === category.slug ? "is-active" : ""}
+                  type="button"
+                  aria-current={activeCategory === category.slug ? "true" : undefined}
+                  onClick={() => {
+                    setActiveCategory(category.slug);
+                    document
+                      .getElementById(`category-${category.slug}`)
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                  key={category.id}
+                >
+                  {category.name}
+                </button>
+              ))}
+            </nav>
+          )}
+
+          <div className="figma-menu__content" ref={menuContentRef}>
+            {products.length === 0 ? (
+              <section className="figma-empty-state" aria-live="polite">
+                <div className="figma-empty-state__icon">
+                  <SearchIcon />
+                </div>
+                <h2>
+                  {debouncedSearch.length > 0
+                    ? "Không tìm thấy món phù hợp"
+                    : "Menu đang được cập nhật"}
+                </h2>
+                <p>
+                  {debouncedSearch.length > 0
+                    ? `Không có món nào khớp với "${debouncedSearch}". Hãy thử từ khóa khác nhé.`
+                    : "Quay lại sau một chút để khám phá các món mới."}
+                </p>
+                {debouncedSearch.length > 0 && (
+                  <button type="button" onClick={handleClearSearch}>
+                    Xóa tìm kiếm
+                  </button>
+                )}
+              </section>
+            ) : (
+              <div className="category-sections" aria-live="polite">
+                {categories.map((category) => {
+                  const categoryProducts = products.filter(
+                    (product) => product.category.slug === category.slug,
+                  );
+
+                  if (categoryProducts.length === 0) {
+                    return null;
+                  }
+
+                  return (
+                    <section
+                      className="category-section"
+                      id={`category-${category.slug}`}
+                      aria-labelledby={`category-title-${category.slug}`}
                       key={category.id}
                     >
-                      {category.name}
-                    </button>
-                  ))}
-              </nav>
+                      <h2 className="sr-only" id={`category-title-${category.slug}`}>
+                        {category.name}
+                      </h2>
+                      <div className="product-grid">
+                        {categoryProducts.map((product) => (
+                          <ProductCard product={product} key={product.id} />
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
             )}
-
-            <div className="figma-menu__content" ref={menuContentRef}>
-              {products.length === 0 ? (
-                <section className="figma-empty-state" aria-live="polite">
-                  <h2>Menu đang được cập nhật</h2>
-                  <p>Quay lại sau một chút để khám phá các món mới.</p>
-                </section>
-              ) : (
-                <div className="category-sections" aria-live="polite">
-                  {categories.map((category) => {
-                    const categoryProducts = products.filter(
-                      (product) => product.category.slug === category.slug,
-                    );
-
-                    if (categoryProducts.length === 0) {
-                      return null;
-                    }
-
-                    return (
-                      <section
-                        className="category-section"
-                        id={`category-${category.slug}`}
-                        aria-labelledby={`category-title-${category.slug}`}
-                        key={category.id}
-                      >
-                        <h2 className="sr-only" id={`category-title-${category.slug}`}>
-                          {category.name}
-                        </h2>
-                        <div className="product-grid">
-                          {categoryProducts.map((product) => (
-                            <ProductCard product={product} key={product.id} />
-                          ))}
-                        </div>
-                      </section>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
           </div>
+        </div>
       </section>
     </main>
   );

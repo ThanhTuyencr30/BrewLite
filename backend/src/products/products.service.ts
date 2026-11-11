@@ -52,6 +52,16 @@ const menuOrder = new Map(
   ].map((slug, index) => [slug, index]),
 );
 
+function toSlugSearch(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 export interface FindProductsQuery {
   search?: string;
   category?: string;
@@ -80,6 +90,7 @@ export class ProductsService {
 
   async findAll(query: FindProductsQuery = {}): Promise<ProductSummary[]> {
     const search = query.search?.trim();
+    const slugSearch = search ? toSlugSearch(search) : '';
     const category = query.category?.trim();
 
     const products = await this.prisma.product.findMany({
@@ -94,6 +105,9 @@ export class ProductsService {
               OR: [
                 { name: { contains: search, mode: 'insensitive' } },
                 { description: { contains: search, mode: 'insensitive' } },
+                ...(slugSearch
+                  ? [{ slug: { contains: slugSearch, mode: 'insensitive' as const } }]
+                  : []),
               ],
             }
           : {}),
