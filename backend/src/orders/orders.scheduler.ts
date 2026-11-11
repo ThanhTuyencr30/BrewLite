@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../database/prisma.service';
 import { OrderStatus } from '../generated/prisma/enums';
+import { restoreIngredients } from './ingredient-stock';
 
 @Injectable()
 export class OrdersScheduler {
@@ -58,7 +59,10 @@ export class OrdersScheduler {
           });
         }
 
-        // 4. Trả lại lượt dùng mã giảm giá (nếu có)
+        // 4. Hoàn lại nguyên liệu đã trừ theo công thức
+        await restoreIngredients(tx, order.items);
+
+        // 5. Trả lại lượt dùng mã giảm giá (nếu có)
         if (order.promotionId) {
           await tx.promotion.updateMany({
             where: { id: order.promotionId, usedCount: { gt: 0 } },

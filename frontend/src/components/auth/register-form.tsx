@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ApiError, register } from "@/lib/api";
 import { AuthResultDialog, type DialogTone } from "./auth-result-dialog";
 import { AuthShell } from "./auth-shell";
+import { PasswordVisibilityToggle } from "./password-visibility-toggle";
 import styles from "./auth.module.css";
 
 type RegisterField = "email" | "password" | "confirmation";
@@ -22,7 +23,8 @@ export function RegisterForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
-  const [showPasswords, setShowPasswords] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<RegisterErrors>({});
   const [dialog, setDialog] = useState<DialogState | null>(null);
@@ -77,6 +79,8 @@ export function RegisterForm() {
     placeholder: string,
     value: string,
     onChange: (nextValue: string) => void,
+    visible: boolean,
+    onToggle: () => void,
   ) {
     const error = errors[field];
     return (
@@ -97,20 +101,10 @@ export function RegisterForm() {
             }}
             placeholder={placeholder}
             required
-            type={showPasswords ? "text" : "password"}
+            type={visible ? "text" : "password"}
             value={value}
           />
-          {field === "password" && (
-            <button
-              aria-label={showPasswords ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-              aria-pressed={showPasswords}
-              className={styles.passwordToggle}
-              onClick={() => setShowPasswords((visible) => !visible)}
-              type="button"
-            >
-              {showPasswords ? "Ẩn" : "Hiện"}
-            </button>
-          )}
+          <PasswordVisibilityToggle visible={visible} onToggle={onToggle} />
         </span>
         {error ? (
           <span className={styles.fieldError} id={`${field}-error`}>
@@ -165,6 +159,8 @@ export function RegisterForm() {
           "Nhập mật khẩu của bạn",
           password,
           setPassword,
+          showPassword,
+          () => setShowPassword((visible) => !visible),
         )}
         {renderPasswordField(
           "confirmation",
@@ -172,6 +168,8 @@ export function RegisterForm() {
           "Nhập lại mật khẩu của bạn",
           confirmation,
           setConfirmation,
+          showConfirmation,
+          () => setShowConfirmation((visible) => !visible),
         )}
 
         <button

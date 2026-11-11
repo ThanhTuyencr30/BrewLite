@@ -168,6 +168,19 @@ export interface OrderItem {
   unitPrice: number;
   lineTotal: number;
   product?: { imageUrl: string };
+  toppings?: {
+    toppingId: number;
+    toppingName: string;
+    unitPrice: number;
+  }[];
+}
+
+export interface OrderStatusHistoryEntry {
+  id: number;
+  fromStatus: OrderStatus | null;
+  toStatus: OrderStatus;
+  note: string | null;
+  changedAt: string;
 }
 
 export interface Order {
@@ -182,4 +195,5 @@ export interface Order {
   cancelledAt: string | null;
   cancelReason: string | null;
   items: OrderItem[];
+  statusHistory?: OrderStatusHistoryEntry[];
 }

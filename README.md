@@ -18,7 +18,7 @@ docker compose up --build
 
 - Frontend: `http://localhost:3000`
 - Backend: `http://localhost:3001`
-- PostgreSQL: `localhost:5432`
+- PostgreSQL: `localhost:5433` (cổng host mặc định; trong Docker vẫn là `5432`)
 
 Lần đầu chạy, backend tự áp dụng migration và nạp dữ liệu mẫu (chỉ khi
 database chưa có sản phẩm, nên khởi động lại không làm mất tồn kho). Các giá
@@ -59,6 +59,21 @@ npm run dev
 
 Frontend mặc định chạy tại `http://localhost:3000` và đọc API URL từ
 `NEXT_PUBLIC_API_URL`.
+
+## Khôi phục mật khẩu
+
+Trang đăng nhập có liên kết **Quên mật khẩu?**. Backend hỗ trợ:
+
+```http
+POST /auth/forgot-password  # { "email": "user@example.com" }
+POST /auth/reset-password   # { "token": "...", "password": "..." }
+```
+
+Để gửi email, cấu hình `MAIL_HOST`, `MAIL_PORT`, `MAIL_SECURE`, `MAIL_USER`,
+`MAIL_PASSWORD` và `MAIL_FROM` trong `.env` gốc khi chạy Docker hoặc
+`backend/.env` khi chạy riêng. SMTP credentials chỉ để trong file `.env`, không
+commit. Liên kết reset hết hạn sau 60 phút, chỉ dùng một lần; endpoint yêu cầu
+đặt lại luôn trả thông báo chung để không tiết lộ email có tài khoản hay không.
 
 ## API menu
 
@@ -181,6 +196,15 @@ Bấm **Hủy** trên trang VNPay để demo giao dịch thất bại.
 - Nếu đơn đã bị hủy (quá 15 phút) trong lúc khách thanh toán xong ở VNPay,
   thanh toán được ghi nhận `FAILED` kèm lý do và cần hoàn tiền thủ công từ
   trang quản trị VNPay; ứng dụng chưa gọi API hoàn tiền của VNPay.
+
+## Tồn kho nguyên liệu
+
+- Bảng `ingredients` lưu tồn kho theo đơn vị nhỏ nhất (`g`, `ml`), ví dụ `Cà phê hạt: 5000 g`.
+- Bảng `product_ingredients` lưu định lượng nguyên liệu cho **một ly**, tách theo từng sản phẩm và size.
+- Khi tạo đơn, backend cộng dồn nguyên liệu cần dùng và trừ kho trong cùng transaction với tồn kho món. Thiếu nguyên liệu thì đơn bị từ chối, không trừ gì cả.
+- Hủy đơn hoặc đơn quá hạn 15 phút sẽ hoàn lại nguyên liệu đã trừ.
+- Seed sẵn 27 nguyên liệu và công thức cho 27 món. Với database đã có sản phẩm từ trước, chạy một lần:
+  `docker compose exec backend npx prisma db seed`
 
 ## Kiểm tra
 

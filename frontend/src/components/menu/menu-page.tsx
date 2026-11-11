@@ -54,6 +54,7 @@ export function MenuPage() {
   const [activeCategory, setActiveCategory] = useState("ca-phe");
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const menuContentRef = useRef<HTMLDivElement>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -149,17 +150,66 @@ export function MenuPage() {
     return () => controller.abort();
   }, [debouncedSearch, retryCount]);
 
+  useEffect(() => {
+    const contentElement = menuContentRef.current;
+    if (!contentElement) {
+      return;
+    }
+
+    const sections = Array.from(
+      contentElement.querySelectorAll<HTMLElement>(".category-section"),
+    );
+    if (sections.length === 0) {
+      return;
+    }
+
+    function updateActiveCategory() {
+      const currentContent = menuContentRef.current;
+      if (!currentContent) {
+        return;
+      }
+
+      const activationLine =
+        currentContent.getBoundingClientRect().top +
+        Math.min(80, currentContent.clientHeight * 0.25);
+      let activeSection = sections[0];
+
+      for (const section of sections) {
+        if (section.getBoundingClientRect().top > activationLine) {
+          break;
+        }
+        activeSection = section;
+      }
+
+      if (
+        currentContent.scrollTop + currentContent.clientHeight >=
+        currentContent.scrollHeight - 2
+      ) {
+        activeSection = sections[sections.length - 1];
+      }
+
+      const slug = activeSection.id.replace("category-", "");
+      setActiveCategory((current) => (current === slug ? current : slug));
+    }
+
+    contentElement.addEventListener("scroll", updateActiveCategory, { passive: true });
+    window.addEventListener("resize", updateActiveCategory);
+    updateActiveCategory();
+
+    return () => {
+      contentElement.removeEventListener("scroll", updateActiveCategory);
+      window.removeEventListener("resize", updateActiveCategory);
+    };
+  }, [categories, products]);
+
   function handleClearSearch() {
     setSearchInput("");
     setDebouncedSearch("");
   }
 
-  const visibleCategories =
-    debouncedSearch.length > 0
-      ? categories.filter((category) =>
-          products.some((product) => product.category.slug === category.slug),
-        )
-      : categories;
+  const visibleCategories = categories.filter((category) =>
+    products.some((product) => product.category.slug === category.slug),
+  );
 
   if (isInitialLoading) {
     return <MenuSkeleton />;
@@ -286,7 +336,7 @@ export function MenuPage() {
             </nav>
           )}
 
-          <div className="figma-menu__content">
+          <div className="figma-menu__content" ref={menuContentRef}>
             {products.length === 0 ? (
               <section className="figma-empty-state" aria-live="polite">
                 <div className="figma-empty-state__icon">

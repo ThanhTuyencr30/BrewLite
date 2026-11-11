@@ -185,18 +185,19 @@ export function PromotionPage() {
       </section>
 
       <footer className="promotion-footer">
-        <section className="promotion-total" aria-label="Tóm tắt mã giảm giá">
+        <section className="cart-summary" aria-label="Tóm tắt mã giảm giá">
           <div><dt>Tạm tính</dt><dd>{formatCurrency(subtotal)}</dd></div>
-          <div><dt>Giảm giá{selectedCode ? ` (${selectedCode})` : ""}</dt><dd>−{formatCurrency(previewDiscount)}</dd></div>
-          <div className="promotion-total__grand"><dt>Tổng cộng</dt><dd>{formatCurrency(Math.max(0, subtotal - previewDiscount))}</dd></div>
+          <div className="cart-summary__discount"><dt>Giảm giá{selectedCode ? ` (${selectedCode})` : ""}</dt><dd>−{formatCurrency(previewDiscount)}</dd></div>
+          <div className="cart-summary__total"><dt>Tổng cộng</dt><dd>{formatCurrency(Math.max(0, subtotal - previewDiscount))}</dd></div>
         </section>
         <button
-          className="promotion-confirm-button"
+          className="cart-checkout-button promotion-confirm-button"
           disabled={isApplying || items.length === 0}
           onClick={() => void confirmPromotion()}
           type="button"
         >
           {isApplying ? "Đang kiểm tra..." : "Xác nhận áp mã"}
+          <span aria-hidden="true">→</span>
         </button>
       </footer>
 

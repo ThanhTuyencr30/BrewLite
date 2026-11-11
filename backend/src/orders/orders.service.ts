@@ -10,6 +10,7 @@ import {
 } from '../generated/prisma/client';
 import { loyaltyPointsFor } from '../users/loyalty-points';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { deductIngredients, restoreIngredients } from './ingredient-stock';
 import { OrderStateMachine } from './order-state-machine.service';
 
 const ORDER_PAYMENT_WINDOW_MS = 15 * 60 * 1000;
@@ -43,7 +44,7 @@ export class OrdersService {
       },
       orderBy: { createdAt: 'desc' },
       include: { 
-        items: { include: { product: true } } 
+        items: { include: { product: true, toppings: true } }
       }
     });
   }
@@ -53,7 +54,7 @@ export class OrdersService {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: { 
-        items: { include: { product: true } },
+        items: { include: { product: true, toppings: true } },
         statusHistory: true // Lấy lịch sử để vẽ Timeline
       }
     });
@@ -110,7 +111,10 @@ export class OrdersService {
         });
       }
 
-      // 3.4. Hoàn tiền (Nếu đơn đã thanh toán)
+      // 3.4. Hoàn lại nguyên liệu đã trừ theo công thức
+      await restoreIngredients(tx, order.items);
+
+      // 3.5. Hoàn tiền (Nếu đơn đã thanh toán)
       const paidPayment = order.payments.find(p => p.status === PaymentStatus.SUCCEEDED);
       if (paidPayment) {
         await tx.payment.update({
@@ -129,7 +133,7 @@ export class OrdersService {
         }
       }
 
-      // 3.5. Trả lại lượt dùng mã giảm giá (Nếu có)
+      // 3.6. Trả lại lượt dùng mã giảm giá (Nếu có)
       if (order.promotionId) {
         await tx.promotion.updateMany({
           where: { id: order.promotionId, usedCount: { gt: 0 } },
@@ -274,6 +278,9 @@ export class OrdersService {
           throw new BadRequestException(`Xung đột dữ liệu tồn kho cho sản phẩm ${item.productName}. Vui lòng thử lại.`);
         }
       }
+
+      // Trừ nguyên liệu theo công thức; nếu thiếu thì cả transaction hoàn tác.
+      await deductIngredients(tx, processedItems);
 
       return tx.order.create({
         data: {

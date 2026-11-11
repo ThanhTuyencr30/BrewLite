@@ -124,7 +124,7 @@ export default function CheckoutPage() {
   if (isAutoCancelled || order.status === "CANCELLED") {
     return (
       <main className="min-h-screen bg-[#F8F5EC] flex justify-center font-sans">
-        <div className="w-full max-w-[400px] min-h-screen flex flex-col p-5">
+        <div className="w-full max-w-[400px] min-h-screen flex flex-col p-5 border-x border-[#F0EAD6] shadow-xl">
           <div className="flex-1 flex flex-col items-center justify-center text-center">
             <div className="w-16 h-16 bg-[#FCE8E6] rounded-full flex items-center justify-center mb-4" aria-hidden="true">
               <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#D93025" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
@@ -157,7 +157,7 @@ export default function CheckoutPage() {
   // ===== Màn "Đơn hàng của bạn" (27, 31) =====
   return (
     <main className="min-h-screen bg-[#F8F5EC] flex justify-center font-sans pb-40">
-      <div className="w-full max-w-[400px] min-h-screen relative">
+      <div className="w-full max-w-[400px] min-h-screen relative border-x border-[#F0EAD6] shadow-xl">
         <header className="flex items-center px-5 pt-8 pb-4">
           <Link aria-label="Về giỏ hàng" href="/cart" className="mr-3 text-[#222]">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>

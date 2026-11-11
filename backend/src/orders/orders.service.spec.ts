@@ -7,6 +7,8 @@ describe('OrdersService.createOrder', () => {
   const tx = {
     product: { findUnique: jest.fn(), updateMany: jest.fn() },
     promotion: { findUnique: jest.fn(), updateMany: jest.fn() },
+    productIngredient: { findMany: jest.fn() },
+    ingredient: { findMany: jest.fn(), updateMany: jest.fn() },
     order: { create: jest.fn() },
   };
   const prisma = {
@@ -35,6 +37,11 @@ describe('OrdersService.createOrder', () => {
     tx.product.findUnique.mockResolvedValue(americano);
     tx.product.updateMany.mockResolvedValue({ count: 1 });
     tx.promotion.updateMany.mockResolvedValue({ count: 1 });
+    tx.productIngredient.findMany.mockResolvedValue([
+      { productId: 1, size: 'M', ingredientId: 1, quantity: 10 },
+    ]);
+    tx.ingredient.findMany.mockResolvedValue([{ id: 1, name: 'Cà phê hạt' }]);
+    tx.ingredient.updateMany.mockResolvedValue({ count: 1 });
     tx.order.create.mockImplementation(({ data }: { data: unknown }) => data);
   });
 
@@ -55,6 +62,30 @@ describe('OrdersService.createOrder', () => {
       where: { id: 1, version: 3, stock: { gte: 2 } },
       data: { stock: { decrement: 2 }, version: { increment: 1 } },
     });
+  });
+
+  it('deducts ingredients for every ordered cup', async () => {
+    await service.createOrder('user-1', {
+      items: [{ productId: 1, size: 'M', quantity: 2 }],
+    });
+
+    expect(tx.productIngredient.findMany).toHaveBeenCalledWith({
+      where: { OR: [{ productId: 1, size: 'M' }] },
+      select: { productId: true, size: true, ingredientId: true, quantity: true },
+    });
+    expect(tx.ingredient.updateMany).toHaveBeenCalledWith({
+      where: { id: 1, stock: { gte: 20 } },
+      data: { stock: { decrement: 20 } },
+    });
+  });
+
+  it('rejects the order when an ingredient is out of stock', async () => {
+    tx.ingredient.updateMany.mockResolvedValueOnce({ count: 0 });
+
+    await expect(
+      service.createOrder('user-1', { items: [{ productId: 1, size: 'M', quantity: 1 }] }),
+    ).rejects.toThrow('Nguyên liệu "Cà phê hạt" không đủ tồn kho.');
+    expect(tx.order.create).not.toHaveBeenCalled();
   });
 
   it('applies a valid promotion and caps the discount', async () => {
@@ -133,6 +164,8 @@ describe('OrdersService.cancelOrder', () => {
     order: { updateMany: jest.fn() },
     orderStatusHistory: { create: jest.fn() },
     product: { update: jest.fn() },
+    productIngredient: { findMany: jest.fn() },
+    ingredient: { update: jest.fn() },
     payment: { update: jest.fn() },
     promotion: { updateMany: jest.fn() },
     user: { update: jest.fn(), updateMany: jest.fn() },
@@ -144,6 +177,13 @@ describe('OrdersService.cancelOrder', () => {
   } as unknown as PrismaService;
   const service = new OrdersService(prisma, new OrderStateMachine());
 
+  beforeEach(() => {
+    jest.clearAllMocks();
+    tx.productIngredient.findMany.mockResolvedValue([
+      { productId: 1, size: 'M', ingredientId: 3, quantity: 20 },
+    ]);
+  });
+
   it('releases the promotion usage when an order is cancelled', async () => {
     findUnique.mockResolvedValue({
       id: 'order-1',
@@ -151,7 +191,7 @@ describe('OrdersService.cancelOrder', () => {
       status: 'PENDING',
       version: 0,
       promotionId: 5,
-      items: [{ productId: 1, quantity: 1 }],
+      items: [{ productId: 1, productName: 'Americano', size: 'M', quantity: 1 }],
       payments: [],
     });
     tx.order.updateMany.mockResolvedValue({ count: 1 });
@@ -161,6 +201,10 @@ describe('OrdersService.cancelOrder', () => {
     expect(tx.promotion.updateMany).toHaveBeenCalledWith({
       where: { id: 5, usedCount: { gt: 0 } },
       data: { usedCount: { decrement: 1 } },
+    });
+    expect(tx.ingredient.update).toHaveBeenCalledWith({
+      where: { id: 3 },
+      data: { stock: { increment: 20 } },
     });
   });
 

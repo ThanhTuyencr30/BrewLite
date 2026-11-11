@@ -6,6 +6,8 @@ describe('OrdersScheduler', () => {
     order: { updateMany: jest.fn() },
     orderStatusHistory: { create: jest.fn() },
     product: { update: jest.fn() },
+    productIngredient: { findMany: jest.fn() },
+    ingredient: { update: jest.fn() },
     promotion: { updateMany: jest.fn() },
   };
   const findMany = jest.fn();
@@ -18,12 +20,15 @@ describe('OrdersScheduler', () => {
     id: 'order-1',
     version: 0,
     promotionId: 5,
-    items: [{ productId: 1, quantity: 2 }],
+    items: [{ productId: 1, productName: 'Americano', size: 'M', quantity: 2 }],
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
     findMany.mockResolvedValue([expiredOrder]);
+    tx.productIngredient.findMany.mockResolvedValue([
+      { productId: 1, size: 'M', ingredientId: 3, quantity: 10 },
+    ]);
   });
 
   it('cancels expired pending orders and restores stock', async () => {
@@ -35,6 +40,10 @@ describe('OrdersScheduler', () => {
     expect(tx.product.update).toHaveBeenCalledWith({
       where: { id: 1 },
       data: { stock: { increment: 2 } },
+    });
+    expect(tx.ingredient.update).toHaveBeenCalledWith({
+      where: { id: 3 },
+      data: { stock: { increment: 20 } },
     });
     expect(tx.promotion.updateMany).toHaveBeenCalledWith({
       where: { id: 5, usedCount: { gt: 0 } },

@@ -33,6 +33,71 @@ const toppings = [
   { name: 'Kem cheese', slug: 'kem-cheese', price: 5000, stock: 70 },
 ] as const;
 
+// Tồn kho tính theo đơn vị nhỏ nhất: g, ml.
+const ingredients = [
+  { name: 'Cà phê hạt', unit: 'g', stock: 5000 },
+  { name: 'Sữa tươi', unit: 'ml', stock: 20000 },
+  { name: 'Sữa đặc', unit: 'ml', stock: 8000 },
+  { name: 'Kem sữa', unit: 'ml', stock: 5000 },
+  { name: 'Đường', unit: 'g', stock: 10000 },
+  { name: 'Muối', unit: 'g', stock: 1000 },
+  { name: 'Bột cacao', unit: 'g', stock: 3000 },
+  { name: 'Bột matcha', unit: 'g', stock: 2000 },
+  { name: 'Trà đen', unit: 'g', stock: 3000 },
+  { name: 'Trà olong', unit: 'g', stock: 2000 },
+  { name: 'Trà xanh', unit: 'g', stock: 1500 },
+  { name: 'Trà hoa cúc', unit: 'g', stock: 1000 },
+  { name: 'Syrup caramel', unit: 'ml', stock: 2000 },
+  { name: 'Syrup đào', unit: 'ml', stock: 3000 },
+  { name: 'Syrup vải', unit: 'ml', stock: 2000 },
+  { name: 'Syrup ổi', unit: 'ml', stock: 2000 },
+  { name: 'Syrup đường đen', unit: 'ml', stock: 2000 },
+  { name: 'Syrup việt quốc', unit: 'ml', stock: 2000 },
+  { name: 'Nước cốt dừa', unit: 'ml', stock: 4000 },
+  { name: 'Soda', unit: 'ml', stock: 15000 },
+  { name: 'Nước cốt chanh', unit: 'ml', stock: 2000 },
+  { name: 'Chanh dây', unit: 'g', stock: 2000 },
+  { name: 'Dâu', unit: 'g', stock: 3000 },
+  { name: 'Bạc hà', unit: 'g', stock: 1000 },
+  { name: 'Sả', unit: 'g', stock: 1000 },
+  { name: 'Đậu đỏ', unit: 'g', stock: 3000 },
+  { name: 'Đào miếng', unit: 'g', stock: 3000 },
+] as const;
+
+// Định lượng cho size S; size M và L nhân theo hệ số bên dưới.
+const SIZE_FACTORS: Record<SizeCode, number> = { S: 1, M: 1.25, L: 1.5 };
+
+const baseRecipes: Record<string, Record<string, number>> = {
+  'ca-phe-sua': { 'Cà phê hạt': 18, 'Sữa đặc': 25, 'Sữa tươi': 50 },
+  cappuccino: { 'Cà phê hạt': 18, 'Sữa tươi': 110, 'Đường': 5 },
+  americano: { 'Cà phê hạt': 18, 'Đường': 5 },
+  'caramel-macchiato': { 'Cà phê hạt': 18, 'Sữa tươi': 90, 'Syrup caramel': 20 },
+  mocha: { 'Cà phê hạt': 18, 'Sữa tươi': 80, 'Bột cacao': 12, 'Đường': 5 },
+  'ca-phe-muoi': { 'Cà phê hạt': 18, 'Sữa tươi': 70, 'Kem sữa': 25, 'Muối': 2 },
+  'choco-latte': { 'Sữa tươi': 110, 'Bột cacao': 15, 'Đường': 8 },
+  'matcha-latte': { 'Sữa tươi': 110, 'Bột matcha': 10, 'Đường': 8 },
+  'freeze-chocolate': { 'Sữa tươi': 90, 'Bột cacao': 15, 'Đường': 8 },
+  'freeze-matcha': { 'Sữa tươi': 90, 'Bột matcha': 10, 'Đường': 8 },
+  'tra-cuc-sen-vang': { 'Trà hoa cúc': 6, 'Đường': 8 },
+  'tra-oi-hong': { 'Trà đen': 6, 'Syrup ổi': 30, 'Đường': 5 },
+  'tra-vai': { 'Trà đen': 6, 'Syrup vải': 30, 'Đường': 5 },
+  'tra-dao': { 'Trà đen': 6, 'Syrup đào': 30, 'Đào miếng': 20 },
+  'tra-xanh-dau-do': { 'Trà xanh': 6, 'Đậu đỏ': 30, 'Đường': 8 },
+  'tra-dao-cam-sa': { 'Trà đen': 6, 'Syrup đào': 25, 'Sả': 5 },
+  'tra-olong-sua-nhai': { 'Trà olong': 7, 'Sữa tươi': 70, 'Sữa đặc': 15, 'Đường': 5 },
+  'tra-olong-sua-dua': { 'Trà olong': 7, 'Nước cốt dừa': 60, 'Sữa tươi': 30, 'Đường': 5 },
+  'tra-sua-truyen-thong': { 'Trà đen': 7, 'Sữa tươi': 70, 'Sữa đặc': 15, 'Đường': 5 },
+  'tra-sua-hongkong': { 'Trà đen': 7, 'Sữa tươi': 80, 'Sữa đặc': 20 },
+  'tra-sua-matcha': { 'Trà xanh': 6, 'Bột matcha': 8, 'Sữa tươi': 80, 'Đường': 8 },
+  'tra-sua-duong-den': { 'Trà đen': 7, 'Sữa tươi': 70, 'Syrup đường đen': 20 },
+  'soda-viet-quoc': { 'Soda': 120, 'Syrup việt quốc': 30, 'Đường': 5 },
+  'soda-dau': { 'Soda': 120, 'Dâu': 40, 'Đường': 8 },
+  'soda-chanh': { 'Soda': 120, 'Nước cốt chanh': 20, 'Đường': 10 },
+  'soda-bac-ha': { 'Soda': 120, 'Bạc hà': 5, 'Đường': 8 },
+  'soda-chanh-day': { 'Soda': 120, 'Nước cốt chanh': 15, 'Chanh dây': 20, 'Đường': 5 },
+};
+
+
 type ProductSeed = {
   name: string;
   slug: string;
@@ -151,6 +216,7 @@ async function main() {
 
   const categoryIds = new Map<string, number>();
   const toppingIds = new Map<string, number>();
+  const ingredientIds = new Map<string, number>();
 
   await prisma.product.updateMany({ data: { isAvailable: false } });
   await prisma.category.updateMany({ data: { isActive: false } });
@@ -168,10 +234,20 @@ async function main() {
   for (const topping of toppings) {
     const savedTopping = await prisma.topping.upsert({
       where: { slug: topping.slug },
-      update: topping,
+      update: { ...topping, isAvailable: true },
       create: topping,
     });
     toppingIds.set(savedTopping.slug, savedTopping.id);
+  }
+
+  for (const ingredient of ingredients) {
+    const savedIngredient = await prisma.ingredient.upsert({
+      where: { name: ingredient.name },
+      // Không ghi đè stock khi seed lại để không làm mất tồn kho thực tế.
+      update: { unit: ingredient.unit },
+      create: ingredient,
+    });
+    ingredientIds.set(savedIngredient.name, savedIngredient.id);
   }
 
   for (const product of designProducts) {
@@ -203,9 +279,31 @@ async function main() {
       },
     });
 
+    const baseRecipe = baseRecipes[product.slug];
+    if (!baseRecipe) {
+      throw new Error(`Missing ingredient recipe for product: ${product.slug}`);
+    }
+
+    const recipeRows = Object.values(SizeCode).flatMap((size) =>
+      Object.entries(baseRecipe).map(([ingredientName, baseQuantity]) => {
+        const ingredientId = ingredientIds.get(ingredientName);
+        if (!ingredientId) {
+          throw new Error(`Missing ingredient: ${ingredientName}`);
+        }
+
+        return {
+          productId: savedProduct.id,
+          size,
+          ingredientId,
+          quantity: Math.round(baseQuantity * SIZE_FACTORS[size]),
+        };
+      }),
+    );
+
     await prisma.$transaction([
       prisma.productSize.deleteMany({ where: { productId: savedProduct.id } }),
       prisma.productTopping.deleteMany({ where: { productId: savedProduct.id } }),
+      prisma.productIngredient.deleteMany({ where: { productId: savedProduct.id } }),
       prisma.productSize.createMany({
         data: Object.values(SizeCode).map((size) => ({
           productId: savedProduct.id,
@@ -229,6 +327,7 @@ async function main() {
           return { productId: savedProduct.id, toppingId };
         }),
       }),
+      prisma.productIngredient.createMany({ data: recipeRows }),
     ]);
   }
 
@@ -247,7 +346,7 @@ async function main() {
   }
 
   console.info(
-    `Seeded ${categories.length} categories, ${toppings.length} toppings, ${designProducts.length} products and ${promotions.length} promotions.`,
+    `Seeded ${categories.length} categories, ${toppings.length} toppings, ${ingredients.length} ingredients, ${designProducts.length} products and ${promotions.length} promotions.`,
   );
 }
 
