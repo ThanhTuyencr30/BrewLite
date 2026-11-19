@@ -1042,6 +1042,103 @@ body {
   margin: 8px 0 12px;
 }
 
+.figma-search {
+  align-items: center;
+  background: var(--figma-card);
+  border: 1.5px solid var(--figma-line);
+  border-radius: 12px;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  margin: 0 10px 10px 0;
+  min-height: 42px;
+  padding: 0 12px;
+  position: relative;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  z-index: 2;
+}
+
+.figma-search:focus-within {
+  border-color: var(--figma-caramel);
+  box-shadow: 0 0 0 3px rgba(198, 140, 86, 0.18);
+}
+
+.figma-search__icon {
+  align-items: center;
+  color: var(--figma-muted);
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.figma-search__icon svg {
+  fill: none;
+  height: 18px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  width: 18px;
+}
+
+.figma-search input {
+  background: transparent;
+  border: 0;
+  color: var(--figma-brown);
+  flex: 1;
+  font-size: 14px;
+  height: 40px;
+  min-width: 0;
+  outline: none;
+}
+
+.figma-search input::placeholder {
+  color: var(--figma-muted);
+}
+
+.figma-search input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.figma-search__clear {
+  align-items: center;
+  background: #eee7dc;
+  border: 0;
+  border-radius: 50%;
+  color: var(--figma-brown);
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 22px;
+  justify-content: center;
+  padding: 0;
+  width: 22px;
+}
+
+.figma-search__clear:hover {
+  background: var(--figma-line);
+}
+
+.figma-search__clear:focus-visible {
+  outline: 2px solid var(--figma-brown);
+  outline-offset: 2px;
+}
+
+.figma-search__clear svg {
+  fill: none;
+  height: 12px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2.2;
+  width: 12px;
+}
+
+.figma-search-status {
+  color: var(--figma-muted);
+  font-size: 12px;
+  margin: 0 10px 8px 0;
+}
+
 .figma-menu__body {
   display: flex;
   flex: 1 1 auto;

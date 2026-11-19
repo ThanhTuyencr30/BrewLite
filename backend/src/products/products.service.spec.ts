@@ -41,14 +41,15 @@ describe('ProductsService', () => {
   it('passes search and category filters to Prisma', async () => {
     findMany.mockResolvedValue([]);
 
-    await service.findAll({ search: '  đào  ', category: 'tra-trai-cay' });
+    await service.findAll({ search: '  Trà đào  ', category: 'tra-trai-cay' });
 
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
           category: expect.objectContaining({ slug: 'tra-trai-cay' }),
           OR: expect.arrayContaining([
-            { name: { contains: 'đào', mode: 'insensitive' } },
+            { name: { contains: 'Trà đào', mode: 'insensitive' } },
+            { slug: { contains: 'tra-dao', mode: 'insensitive' } },
           ]),
         }),
       }),
